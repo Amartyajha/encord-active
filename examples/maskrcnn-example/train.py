@@ -20,11 +20,11 @@ def train_one_epoch(model, device, data_loader, optimizer, log_freq=None):
     model.train()
 
     for batch_id, (images, targets, _) in enumerate(data_loader):
-        images = list(image.to(device) for image in images)
+        images = [image.to(device) for image in images]
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         loss_dict = model(images, targets)
-        losses = sum(loss for loss in loss_dict.values())
+        losses = sumiter(loss_dict.values())
 
         optimizer.zero_grad()
         losses.backward()
@@ -39,7 +39,7 @@ def evaluate(model, device, data_loader, map_metric):
     model.eval()
 
     for images, targets, _ in data_loader:
-        images = list(image.to(device) for image in images)
+        images = [image.to(device) for image in images]
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         predictions = model(images)

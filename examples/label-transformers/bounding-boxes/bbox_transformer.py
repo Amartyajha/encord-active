@@ -11,6 +11,20 @@ from encord_active.lib.labels.label_transformer import (
 
 
 def get_meta_and_labels(label_files: List[Path], extension: str = ".json"):
+    """"Returns metadata and label files from a list of provided label files.
+    Parameters:
+        - label_files (List[Path]): A list of label files to be processed.
+        - extension (str): The file extension of the label files. Defaults to ".json".
+    Returns:
+        - meta (dict): A dictionary containing metadata from the provided label files.
+        - label_files (List[Path]): A list of label files with the specified extension, excluding the meta file.
+    Processing Logic:
+        - Finds the meta file from the provided list of label files.
+        - Raises a ValueError if no meta file is found.
+        - Loads the metadata from the meta file.
+        - Filters the label files to only include files with the specified extension.
+        - Returns the metadata and filtered label files.""""
+    
     meta_file = next((lf for lf in label_files if "meta" in lf.stem), None)
 
     if meta_file is None:
@@ -25,6 +39,17 @@ def get_meta_and_labels(label_files: List[Path], extension: str = ".json"):
 
 
 def label_file_to_image(label_file: Path) -> Path:
+    """Returns the path to the corresponding image file given a label file.
+    Parameters:
+        - label_file (Path): Path to the label file.
+    Returns:
+        - Path: Path to the corresponding image file.
+    Processing Logic:
+        - Get the parent directory of the parent directory of the label file.
+        - Append "JPEGImages" to the path.
+        - Append the name of the parent directory of the label file to the path.
+        - Append the name of the label file without the extension and with ".jpg" appended to the path."""
+    
     return (
         label_file.parents[2]
         / "JPEGImages"
@@ -36,6 +61,8 @@ def label_file_to_image(label_file: Path) -> Path:
 class BBoxTransformer(LabelTransformer):
     def from_custom_labels(
         self, label_files: List[Path], data_files: List[Path]
+        """"""
+        
     ) -> List[DataLabel]:
         meta, label_files = get_meta_and_labels(label_files, extension=".json")
 

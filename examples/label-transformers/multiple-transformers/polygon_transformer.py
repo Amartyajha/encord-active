@@ -16,6 +16,20 @@ from encord_active.lib.labels.label_transformer import (
 class PolyTransformer(LabelTransformer):
     def from_custom_labels(
         self, label_files: List[Path], data_files: List[Path]
+        """This function takes in a list of label files and a list of data files and returns a list of DataLabel objects. It uses the label files to extract metadata and labels, and then processes each label file to create a DataLabel object. The function uses the label files to extract metadata and labels, and then processes each label file to create a DataLabel object. The function also uses the data files to extract image data and normalize it for processing. The function then iterates through each instance in the image and creates a DataLabel object with the corresponding class and polygon label. The function returns a list of all the created DataLabel objects.
+        Parameters:
+            - label_files (List[Path]): A list of label files to extract metadata and labels from.
+            - data_files (List[Path]): A list of data files to extract image data from.
+        Returns:
+            - out (List[DataLabel]): A list of DataLabel objects containing the extracted labels and image data.
+        Processing Logic:
+            - Extracts metadata and labels from label files.
+            - Extracts image data from data files.
+            - Normalizes image data for processing.
+            - Iterates through each instance in the image.
+            - Creates a DataLabel object with the corresponding class and polygon label.
+            - Returns a list of all the created DataLabel objects."""
+        
     ) -> List[DataLabel]:
         meta, label_files = get_meta_and_labels(label_files, extension=".png")
 

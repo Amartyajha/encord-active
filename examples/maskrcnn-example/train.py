@@ -17,6 +17,22 @@ from utils.provider import (
 
 
 def train_one_epoch(model, device, data_loader, optimizer, log_freq=None):
+    """Function: train_one_epoch
+    Parameters:
+        - model (nn.Module): The model to be trained.
+        - device (str): The device to be used for training.
+        - data_loader (DataLoader): The data loader containing the training data.
+        - optimizer (torch.optim): The optimizer to be used for training.
+        - log_freq (int): The frequency at which to log the training loss, if applicable.
+    Returns:
+        - None: This function does not return any values.
+    Processing Logic:
+        - Train the model for one epoch.
+        - Move images and targets to the specified device.
+        - Calculate the loss for each batch.
+        - Backpropagate the loss and update the model parameters.
+        - If log_freq is specified, log the training loss to WandB every log_freq batches."""
+    
     model.train()
 
     for batch_id, (images, targets, _) in enumerate(data_loader):
@@ -36,6 +52,24 @@ def train_one_epoch(model, device, data_loader, optimizer, log_freq=None):
 
 @torch.inference_mode()
 def evaluate(model, device, data_loader, map_metric):
+    """"Evaluates the performance of a given model on a given dataset using a specified metric."
+    Parameters:
+        - model (nn.Module): The model to be evaluated.
+        - device (torch.device): The device on which the model will be evaluated.
+        - data_loader (DataLoader): The data loader containing the dataset to be evaluated on.
+        - map_metric (Metric): The metric used to evaluate the model's performance.
+    Returns:
+        - float: The value of the specified metric for the given model on the given dataset.
+    Processing Logic:
+        - Set the model to evaluation mode.
+        - Move images and targets to the specified device.
+        - Get predictions from the model.
+        - Threshold the predictions and targets.
+        - Update the metric with the predictions and targets.
+        - Compute the metric's value.
+        - Reset the metric.
+        - Return the computed metric value."""
+    
     model.eval()
 
     for images, targets, _ in data_loader:
@@ -55,6 +89,29 @@ def evaluate(model, device, data_loader, map_metric):
 
 
 def main(params):
+    """This function trains a Mask R-CNN model for object detection and segmentation on a given dataset. It takes in parameters for the dataset, model, and training settings. It returns the best mean average precision (mAP) score achieved during training.
+    Parameters:
+        - params (Namespace): Namespace object containing all the necessary parameters for training.
+    Returns:
+        - best_map (float): The best mean average precision (mAP) score achieved during training.
+    Processing Logic:
+        - Sets up reproducibility with a given seed.
+        - Initializes variables for tracking the best mAP score, the last epoch, and the early stopping counter.
+        - Checks for the availability of a CUDA device and sets the device accordingly.
+        - Creates a dataset object for the training data and gets the number of classes in the dataset.
+        - Filters out images without annotations from the training dataset.
+        - Creates a dataset object for the validation data and filters out images without annotations.
+        - Defines training and validation data loaders.
+        - Gets the Mask R-CNN model and moves it to the appropriate device.
+        - Constructs an optimizer and a learning rate scheduler if specified.
+        - Initializes mean average precision (mAP) metrics for training and validation.
+        - Trains the model for the specified number of epochs.
+        - Evaluates the model's performance on the training and validation data.
+        - Logs the performance metrics to WandB if enabled.
+        - Saves the best model based on the validation mAP score.
+        - Stops training early if the validation mAP score does not improve for a specified number of epochs.
+        - Saves the final model and prints a message indicating that training has finished."""
+    
     setup_reproducibility(35)
 
     best_map = 0

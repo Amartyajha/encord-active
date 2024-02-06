@@ -15,6 +15,8 @@ from encord_active.lib.labels.label_transformer import (
 class BBoxTransformer(LabelTransformer):
     def from_custom_labels(
         self, label_files: List[Path], data_files: List[Path]
+        """"""
+        
     ) -> List[DataLabel]:
         meta, label_files = get_meta_and_labels(label_files, extension=".json")
 

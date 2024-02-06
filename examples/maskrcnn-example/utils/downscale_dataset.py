@@ -13,6 +13,20 @@ annotations_path = "/path/to/annotation/file"
 
 
 def resize_images(root_folder: Path, target_width: int, target_height: int):
+    """Parameters:
+        - root_folder (Path): The root folder containing the images to be resized.
+        - target_width (int): The desired width of the resized images.
+        - target_height (int): The desired height of the resized images.
+    Returns:
+        - None: The function does not return any value, it simply resizes the images and saves them in a new folder.
+    Processing Logic:
+        - Deletes any existing target data folder.
+        - Creates a new target data folder with the specified width and height in the name.
+        - Iterates through the images in the data folder.
+        - Creates a new folder for each image unit in the target data folder.
+        - Resizes each image to the specified width and height using OpenCV.
+        - Saves the resized image in the corresponding folder in the target data folder."""
+    
     data_path = Path(root_folder / "data")
     target_data_path = Path(root_folder / f"data_{target_width}x{target_height}")
 
@@ -59,6 +73,21 @@ def resize_coco_annotations(
     target_width: int,
     target_height: int,
 ):
+    """Resizes COCO annotations to a specified target width and height.
+    Parameters:
+        - coco_annotation_file_path (Path): Path to the COCO annotation file.
+        - images_folder_name (str): Name of the folder containing the images.
+        - target_width (int): Target width for resizing.
+        - target_height (int): Target height for resizing.
+    Returns:
+        - target_coco_annotation_file_path (str): Path to the resized COCO annotation file.
+    Processing Logic:
+        - Creates a new file path for the resized COCO annotation file.
+        - Loads the COCO annotation file.
+        - Creates a deep copy of the COCO annotation.
+        - Resizes the image info and annotations.
+        - Writes the resized COCO annotation to the new file path."""
+    
     target_coco_annotation_file_path = (
         coco_annotation_file_path.with_suffix("").as_posix()
         + f" {target_width}x{target_height}"

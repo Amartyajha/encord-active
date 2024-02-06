@@ -26,10 +26,15 @@ def _try_find_project(path: Path, name: str, hash: str):
         return ProjectFileStructure(direct_match)
 
     for pfs in [ProjectFileStructure(path) for path in path.glob("*") if path.is_dir()]:
-        if pfs.project_meta.exists() and pfs.load_project_meta()["project_hash"] == hash:
+        if (
+            pfs.project_meta.exists()
+            and pfs.load_project_meta()["project_hash"] == hash
+        ):
             return pfs
 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found on disk.")
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Project not found on disk."
+    )
 
 
 async def get_project_file_structure(project: str) -> ProjectFileStructure:
@@ -38,17 +43,24 @@ async def get_project_file_structure(project: str) -> ProjectFileStructure:
 
     with Session(engine) as sess:
         db_project = sess.exec(
-            select(Project.project_name, Project.project_hash).where(Project.project_hash == uuid.UUID(project))
+            select(Project.project_name, Project.project_hash).where(
+                Project.project_hash == uuid.UUID(project)
+            )
         ).first()
         if not db_project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project: {project} wasn't found in the DB"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project: {project} wasn't found in the DB",
             )
 
-        return _try_find_project(get_settings().SERVER_START_PATH, db_project[0], str(db_project[1]))
+        return _try_find_project(
+            get_settings().SERVER_START_PATH, db_project[0], str(db_project[1])
+        )
 
 
-ProjectFileStructureDep = Annotated[ProjectFileStructure, Depends(get_project_file_structure)]
+ProjectFileStructureDep = Annotated[
+    ProjectFileStructure, Depends(get_project_file_structure)
+]
 
 
 async def verify_token(token: Annotated[str, Depends(oauth2_scheme)]) -> None:
@@ -58,7 +70,9 @@ async def verify_token(token: Annotated[str, Depends(oauth2_scheme)]) -> None:
 
     def _http_exception(detail: str) -> HTTPException:
         return HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, headers={"WWW-Authenticate": "Bearer"}, detail=detail
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"},
+            detail=detail,
         )
 
     try:
@@ -69,11 +83,15 @@ async def verify_token(token: Annotated[str, Depends(oauth2_scheme)]) -> None:
         raise _http_exception(detail="Cannot access deployment")
 
 
-async def verify_token_with_project_hash(token: Annotated[str, Depends(oauth2_scheme)], project_hash: str) -> None:
+async def verify_token_with_project_hash(
+    token: Annotated[str, Depends(oauth2_scheme)], project_hash: str
+) -> None:
     # FIXME: tokens should give information about which project_hashes are allowed.
     return await verify_token(token)
 
 
 async def verify_premium():
     if not get_settings().ENV != Env.PACKAGED:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Search is not enabled")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Search is not enabled"
+        )

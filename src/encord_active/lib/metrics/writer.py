@@ -5,7 +5,15 @@ from typing import Optional, Union
 from encord_active.lib.common.iterator import Iterator
 from encord_active.lib.common.writer import CSVWriter
 
-SCORE_CSV_FIELDS = ["identifier", "score", "description", "object_class", "annotator", "frame", "url"]
+SCORE_CSV_FIELDS = [
+    "identifier",
+    "score",
+    "description",
+    "object_class",
+    "annotator",
+    "frame",
+    "url",
+]
 
 
 class CSVMetricWriter(CSVWriter):
@@ -27,7 +35,8 @@ class CSVMetricWriter(CSVWriter):
         frame: Optional[int] = None,
         url: Optional[str] = None,
         annotator: Optional[str] = None,
-        key: Optional[str] = None,  # TODO obsolete parameter, remove from metrics first
+        # TODO obsolete parameter, remove from metrics first
+        key: Optional[str] = None,
     ):
         if not isinstance(score, (float, int)):
             raise TypeError("score must be a float or int")
@@ -46,7 +55,11 @@ class CSVMetricWriter(CSVWriter):
             annotator = "" if annotator is None else annotator
         else:
             label_class = labels[0]["name"] if label_class is None else label_class
-            annotator = labels[0]["lastEditedBy"] if "lastEditedBy" in labels[0] else labels[0]["createdBy"]
+            annotator = (
+                labels[0]["lastEditedBy"]
+                if "lastEditedBy" in labels[0]
+                else labels[0]["createdBy"]
+            )
 
         # remember to remove if clause (not its content) when writer's format (obj, score) is enforced on all metrics
         # start hack

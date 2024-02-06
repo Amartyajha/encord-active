@@ -47,7 +47,10 @@ This metric gives each image a score that shows each image's uniqueness.
         self.near_duplicate_threshold = near_duplicate_threshold
 
     def score_images(
-        self, embedding_info: list[LabelEmbedding], search_result: EmbeddingSearchResult, project_hash: str
+        self,
+        embedding_info: list[LabelEmbedding],
+        search_result: EmbeddingSearchResult,
+        project_hash: str,
     ) -> dict[str, DataUnitInfo]:
         scores: dict[str, DataUnitInfo] = {}
         previous_duplicates: dict[int, int] = {}
@@ -67,7 +70,9 @@ This metric gives each image a score that shows each image's uniqueness.
                     previous_duplicates[neighbor_idx] = item_idx
                 else:
                     if neighbor_dist <= self.near_duplicate_threshold:
-                        scores[data_hash] = DataUnitInfo(neighbor_dist, "Near duplicate image")
+                        scores[data_hash] = DataUnitInfo(
+                            neighbor_dist, "Near duplicate image"
+                        )
                     else:
                         scores[data_hash] = DataUnitInfo(neighbor_dist, "")
                     break
@@ -81,7 +86,9 @@ This metric gives each image a score that shows each image's uniqueness.
             return
 
         pfs = ProjectFileStructure(iterator.cache_dir)
-        embedding_index, embedding_info = EmbeddingIndex.from_project(pfs, self.metadata.embedding_type)
+        embedding_index, embedding_info = EmbeddingIndex.from_project(
+            pfs, self.metadata.embedding_type
+        )
 
         if embedding_index is None or len(embedding_info) == 0:
             logger.info("<yellow>[Skipping]</yellow> The embedding file is empty.")
@@ -90,7 +97,9 @@ This metric gives each image a score that shows each image's uniqueness.
         embeddings = np.stack([e["embedding"] for e in embedding_info])
         query_res = embedding_index.query(embeddings, k=30)
         fix_duplicate_image_orders_in_knn_graph_all_rows(query_res.indices)
-        scores = self.score_images(embedding_info, query_res, iterator.project.project_hash)
+        scores = self.score_images(
+            embedding_info, query_res, iterator.project.project_hash
+        )
 
         for data_unit, _ in iterator.iterate(desc="Writing scores to a file"):
             data_unit_info = scores.get(data_unit["data_hash"])

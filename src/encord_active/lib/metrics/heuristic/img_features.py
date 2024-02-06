@@ -55,7 +55,9 @@ class Wrapper:  # we can't have a non-default-constructible Metric implementatio
             self.saturation_filters = saturation_filters
             self.value_filters = value_filters
 
-            hsv_test = all(0 <= item <= 179 for item in self.__flatten_nested_lists(hue_filters))
+            hsv_test = all(
+                0 <= item <= 179 for item in self.__flatten_nested_lists(hue_filters)
+            )
             if not hsv_test:
                 raise ValueError("Hue parameter should be in [0, 179]")
 
@@ -83,19 +85,55 @@ class Wrapper:  # we can't have a non-default-constructible Metric implementatio
             if self.color_name.lower() != "red":
                 mask = cv2.inRange(
                     image,
-                    np.array([self.hue_filters[0], self.saturation_filters[0], self.value_filters[0]]),
-                    np.array([self.hue_filters[1], self.saturation_filters[1], self.value_filters[1]]),
+                    np.array(
+                        [
+                            self.hue_filters[0],
+                            self.saturation_filters[0],
+                            self.value_filters[0],
+                        ]
+                    ),
+                    np.array(
+                        [
+                            self.hue_filters[1],
+                            self.saturation_filters[1],
+                            self.value_filters[1],
+                        ]
+                    ),
                 )
                 ratio = np.sum(mask > 0) / (image.shape[0] * image.shape[1])
 
             else:
                 lower_spectrum = [
-                    np.array([self.hue_filters[0][0], self.saturation_filters[0], self.value_filters[0]]),
-                    np.array([self.hue_filters[0][1], self.saturation_filters[1], self.value_filters[1]]),
+                    np.array(
+                        [
+                            self.hue_filters[0][0],
+                            self.saturation_filters[0],
+                            self.value_filters[0],
+                        ]
+                    ),
+                    np.array(
+                        [
+                            self.hue_filters[0][1],
+                            self.saturation_filters[1],
+                            self.value_filters[1],
+                        ]
+                    ),
                 ]
                 upper_spectrum = [
-                    np.array([self.hue_filters[1][0], self.saturation_filters[0], self.value_filters[0]]),
-                    np.array([self.hue_filters[1][1], self.saturation_filters[1], self.value_filters[1]]),
+                    np.array(
+                        [
+                            self.hue_filters[1][0],
+                            self.saturation_filters[0],
+                            self.value_filters[0],
+                        ]
+                    ),
+                    np.array(
+                        [
+                            self.hue_filters[1][1],
+                            self.saturation_filters[1],
+                            self.value_filters[1],
+                        ]
+                    ),
                 ]
 
                 lower_mask = cv2.inRange(image, lower_spectrum[0], lower_spectrum[1])
@@ -213,7 +251,9 @@ Aspect ratio is computed as the ratio of image width to image height ($\frac{wid
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        for data_unit, image in iterator.iterate(desc=f"Computing {self.metadata.title}"):
+        for data_unit, image in iterator.iterate(
+            desc=f"Computing {self.metadata.title}"
+        ):
             size = get_du_size(data_unit, image)
             if not size:
                 continue
@@ -238,7 +278,9 @@ Area is computed as the product of image width and image height ($width \times h
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        for data_unit, image in iterator.iterate(desc=f"Computing {self.metadata.title}"):
+        for data_unit, image in iterator.iterate(
+            desc=f"Computing {self.metadata.title}"
+        ):
             size = get_du_size(data_unit, image)
             if not size:
                 continue

@@ -56,18 +56,23 @@ def extract_frames(
             (img_dir / frame.name).symlink_to(frame, target_is_directory=False)
 
 
-def _extract_frames(video_file_name: Path, img_dir: Path, data_hash: str, frame_rate: Optional[float]) -> None:
+def _extract_frames(
+    video_file_name: Path, img_dir: Path, data_hash: str, frame_rate: Optional[float]
+) -> None:
     # DENIS: for the rest to work, I will need to throw if the current directory exists and give a nice user warning.
     img_dir.mkdir(parents=True, exist_ok=True)
 
     if frame_rate:
-        command = (
-            f'ffmpeg -i "{video_file_name}" -r {frame_rate} -start_number 0 {img_dir}/{data_hash}_%d.png -hide_banner'
-        )
+        command = f'ffmpeg -i "{video_file_name}" -r {frame_rate} -start_number 0 {img_dir}/{data_hash}_%d.png -hide_banner'
     else:
         command = f'ffmpeg -i "{video_file_name}" -start_number 0 {img_dir}/{data_hash}_%d.png -hide_banner'
 
-    if subprocess.run(command, shell=True, capture_output=True, stdout=None, check=False).returncode != 0:
+    if (
+        subprocess.run(
+            command, shell=True, capture_output=True, stdout=None, check=False
+        ).returncode
+        != 0
+    ):
         raise RuntimeError(
             "Failed to split the video into multiple image files. Please ensure that you have FFMPEG "
             f"installed on your machine. You can download it from https://ffmpeg.org/download.html. "
@@ -77,7 +82,9 @@ def _extract_frames(video_file_name: Path, img_dir: Path, data_hash: str, frame_
 
 def count_frames(video_file_name: Path) -> int:
     command = f'ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "{video_file_name}"'
-    output = subprocess.run(command, shell=True, capture_output=True, stdout=None, check=False)
+    output = subprocess.run(
+        command, shell=True, capture_output=True, stdout=None, check=False
+    )
     if output.returncode != 0:
         raise RuntimeError(
             "Failed to count the number of frames in the video. Please ensure that you have FFMPEG "
@@ -90,7 +97,9 @@ def count_frames(video_file_name: Path) -> int:
 
 def get_frames_per_second(video_file_name: Path) -> float:
     command = f'ffmpeg -i "{video_file_name}" 2>&1 | sed -n "s/.*, \\(.*\\) fp.*/\\1/p"'
-    output = subprocess.run(command, shell=True, capture_output=True, stdout=None, check=False)
+    output = subprocess.run(
+        command, shell=True, capture_output=True, stdout=None, check=False
+    )
     if output.returncode != 0:
         raise RuntimeError(
             "Failed to count the frame rate in the video. Please ensure that you have FFMPEG "
@@ -167,7 +176,9 @@ def download_file(
             r = requests.get(url, stream=True)
 
             if r.status_code != 200:
-                raise ConnectionError(f"Something happened, couldn't download file from: {url}")
+                raise ConnectionError(
+                    f"Something happened, couldn't download file from: {url}"
+                )
 
             for chunk in r.iter_content(chunk_size=byte_size):
                 if chunk:  # filter out keep-alive new chunks
@@ -196,7 +207,9 @@ def url_to_file_path(url: str, project_dir: Path) -> Optional[Path]:
     return None
 
 
-def file_path_to_url(path: Path, project_dir: Path, relative: Optional[bool] = None) -> str:
+def file_path_to_url(
+    path: Path, project_dir: Path, relative: Optional[bool] = None
+) -> str:
     path = path.expanduser().absolute().resolve()
     if relative is not None and not relative:
         return path.as_uri()
@@ -228,7 +241,9 @@ def download_image(url: str, project_dir: Path) -> Image.Image:
         r = requests.get(url)
 
         if r.status_code != 200:
-            raise ConnectionError(f"Something happened, couldn't download file from: {url}")
+            raise ConnectionError(
+                f"Something happened, couldn't download file from: {url}"
+            )
 
         new_cache_download.write_bytes(r.content)
     except Exception:
@@ -247,11 +262,15 @@ def convert_image_bgr(image: Image.Image) -> np.ndarray:
 TType = TypeVar("TType")
 
 
-def iterate_in_batches(seq: Sequence[TType], size: int) -> Generator[Sequence[TType], None, None]:
+def iterate_in_batches(
+    seq: Sequence[TType], size: int
+) -> Generator[Sequence[TType], None, None]:
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
 
-def collect_async(fn, job_args, max_workers=min(10, (os.cpu_count() or 1) + 4), **kwargs):
+def collect_async(
+    fn, job_args, max_workers=min(10, (os.cpu_count() or 1) + 4), **kwargs
+):
     """
     Distribute work across multiple workers. Good for, e.g., downloading data.
     Will return results in dictionary.
@@ -293,9 +312,16 @@ def try_execute(func: Callable, num_tries: int, kwargs=None):
                 return func(**kwargs)
             else:
                 return func()
-        except (ConnectionError, ConnectionResetError, OSError, UnknownException, EncordException) as e:
+        except (
+            ConnectionError,
+            ConnectionResetError,
+            OSError,
+            UnknownException,
+            EncordException,
+        ) as e:
             logging.warning(
-                f"Handling {e} when executing {func} with args {kwargs}.\n" f" Trying again, attempt number {n + 1}."
+                f"Handling {e} when executing {func} with args {kwargs}.\n"
+                f" Trying again, attempt number {n + 1}."
             )
             time.sleep(0.5 * num_tries)  # linear backoff
     raise Exception("Reached maximum number of execution attempts.")

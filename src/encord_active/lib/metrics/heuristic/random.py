@@ -43,10 +43,14 @@ class RandomObjectMetric(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
 
         found_any = False
-        for data_unit, _ in iterator.iterate(desc="Searching for objects and assigning random scores"):
+        for data_unit, _ in iterator.iterate(
+            desc="Searching for objects and assigning random scores"
+        ):
             for obj in data_unit["labels"].get("objects", []):
                 if not obj["shape"] in valid_annotation_types:
                     continue

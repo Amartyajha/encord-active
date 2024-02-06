@@ -127,7 +127,9 @@ ADDITIONAL_PROJECTS: dict[str, PrebuiltProject] = {
 }
 
 
-def available_prebuilt_projects(sandbox_projects: AvailableSandboxProjects = AvailableSandboxProjects.ALL):
+def available_prebuilt_projects(
+    sandbox_projects: AvailableSandboxProjects = AvailableSandboxProjects.ALL
+):
     if sandbox_projects == AvailableSandboxProjects.ALL:
         return {**BASE_PROJECTS, **ADDITIONAL_PROJECTS}
     elif sandbox_projects == AvailableSandboxProjects.BASE:
@@ -153,11 +155,19 @@ def fetch_prebuilt_project_size(project_name: str) -> Optional[float]:
 
 
 def fetch_response_content_length(r: requests.Response) -> Optional[int]:
-    return int(r.headers["content-length"]) if "content-length" in r.headers.keys() else None
+    return (
+        int(r.headers["content-length"])
+        if "content-length" in r.headers.keys()
+        else None
+    )
 
 
 def fetch_prebuilt_project(
-    project_name: str, out_dir: Path, *, unpack=True, progress_callback: Optional[Callable] = None
+    project_name: str,
+    out_dir: Path,
+    *,
+    unpack=True,
+    progress_callback: Optional[Callable] = None,
 ):
     from encord_active.lib.project.project_file_structure import ProjectFileStructure
 
@@ -168,7 +178,9 @@ def fetch_prebuilt_project(
     pfs = ProjectFileStructure(project_name)
 
     if pfs.project_meta.is_file():
-        redownload = Confirm.ask("Do you want to re-download the project? [red]All existing tags will be removed[/red]")
+        redownload = Confirm.ask(
+            "Do you want to re-download the project? [red]All existing tags will be removed[/red]"
+        )
         print(f"redownload {redownload}")
         if not redownload:
             return out_dir
@@ -189,7 +201,13 @@ def fetch_prebuilt_project(
     chunk_size = 1024 * 1024
 
     with open(output_file_path.as_posix(), "wb") as f:
-        with tqdm(total=total_length, unit="B", unit_scale=True, desc="Downloading sandbox project", ascii=True) as bar:
+        with tqdm(
+            total=total_length,
+            unit="B",
+            unit_scale=True,
+            desc="Downloading sandbox project",
+            ascii=True,
+        ) as bar:
             for index, chunk in enumerate(r.iter_content(chunk_size=chunk_size)):
                 f.write(chunk)
                 bar.update(len(chunk))

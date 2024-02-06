@@ -56,7 +56,9 @@ class BaseClassificationModel:
 
 class BaseObjectModel:
     @abstractmethod
-    def predict_objects(self, image: Image) -> List[Union[BoundingBoxPrediction, SegmentationPrediction]]:
+    def predict_objects(
+        self, image: Image
+    ) -> List[Union[BoundingBoxPrediction, SegmentationPrediction]]:
         """
         Calculate the model-predicted objects.
 
@@ -68,7 +70,9 @@ class BaseObjectModel:
         """
         pass
 
-    def predict(self, image: Image) -> List[Union[BoundingBoxPrediction, SegmentationPrediction]]:
+    def predict(
+        self, image: Image
+    ) -> List[Union[BoundingBoxPrediction, SegmentationPrediction]]:
         return self.predict_objects(image)
 
 
@@ -104,11 +108,19 @@ class AcquisitionFunction(Metric):
         self.doc_url = doc_url
         self._model = model
         super().__init__(
-            title, short_description, long_description, metric_type, data_type, annotation_type, embedding_type
+            title,
+            short_description,
+            long_description,
+            metric_type,
+            data_type,
+            annotation_type,
+            embedding_type,
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        for _, image in iterator.iterate(desc=f"Running {self.metadata.title} acquisition function"):
+        for _, image in iterator.iterate(
+            desc=f"Running {self.metadata.title} acquisition function"
+        ):
             if image is None:
                 continue
             predictions = self._model.predict(image)
@@ -119,7 +131,10 @@ class AcquisitionFunction(Metric):
 
     @abstractmethod
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
         """
         Scores model predictions according the acquisition function description.

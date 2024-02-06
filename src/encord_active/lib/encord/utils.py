@@ -58,11 +58,15 @@ def get_encord_project(ssh_key_path: Union[str, Path], project_hash: str):
     return client.get_project(project_hash)
 
 
-def get_encord_projects(ssh_key_path: Path, query: Optional[ProjectQuery] = None) -> List[Project]:
+def get_encord_projects(
+    ssh_key_path: Path, query: Optional[ProjectQuery] = None
+) -> List[Project]:
     client = get_client(ssh_key_path)
     if query is None:  # Get all projects
         query = ProjectQuery()
-    projects: List[Project] = list(map(lambda x: x["project"], client.get_projects(**query)))
+    projects: List[Project] = list(
+        map(lambda x: x["project"], client.get_projects(**query))
+    )
     return projects
 
 
@@ -128,34 +132,45 @@ def make_object_dict(
 
     if shape.value in [ObjectShape.POLYGON, ObjectShape.POLYLINE] and object_data:
         if not isinstance(object_data, list):
-            raise ValueError(f"The `object_data` for {shape} should be a list of points.")
+            raise ValueError(
+                f"The `object_data` for {shape} should be a list of points."
+            )
 
         object_dict[shape.value] = {
-            str(i): {"x": round(x, 4), "y": round(y, 4)} for i, (x, y) in enumerate(object_data)
+            str(i): {"x": round(x, 4), "y": round(y, 4)}
+            for i, (x, y) in enumerate(object_data)
         }
 
     elif shape.value == ObjectShape.KEY_POINT:
         if not isinstance(object_data, tuple):
             raise ValueError(f"The `object_data` for {shape} should be a tuple.")
         if len(object_data) != 2:
-            raise ValueError(f"The `object_data` for {shape} should have two coordinates.")
+            raise ValueError(
+                f"The `object_data` for {shape} should have two coordinates."
+            )
         if not isinstance(object_data[0], float):
             raise ValueError(f"The `object_data` for {shape} should contain floats.")
 
-        object_dict[shape.value] = {"0": {"x": round(object_data[0], 4), "y": round(object_data[1], 4)}}
+        object_dict[shape.value] = {
+            "0": {"x": round(object_data[0], 4), "y": round(object_data[1], 4)}
+        }
 
     elif shape.value in BoxShapes:
         if not isinstance(object_data, dict):
             raise ValueError(f"The `object_data` for {shape} should be a dictionary.")
         if len(BBOX_KEYS.intersection(object_data.keys())) != 4:
-            raise ValueError(f"The `object_data` for {shape} should have keys {BBOX_KEYS}.")
+            raise ValueError(
+                f"The `object_data` for {shape} should have keys {BBOX_KEYS}."
+            )
         if not isinstance(object_data["x"], float):
             raise ValueError(f"The `object_data` for {shape} should float values.")
 
         box = {k: round(v, 4) for k, v in object_data.items()}
         if shape.value == ObjectShape.ROTATABLE_BOUNDING_BOX:
             if "theta" not in object_data:
-                raise ValueError(f"The `object_data` for {shape} should contain a `theta` field.")
+                raise ValueError(
+                    f"The `object_data` for {shape} should contain a `theta` field."
+                )
 
             object_dict["rotatableBoundingBox"] = {**box, "theta": object_data["theta"]}
         else:

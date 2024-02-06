@@ -29,13 +29,19 @@ class MeanObjectConfidence(AcquisitionFunction):
         )
 
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
-
         if isinstance(predictions, np.ndarray):
-            raise Exception("This acquisition function only evaluates object predictions (bounding-box/segmentation)")
+            raise Exception(
+                "This acquisition function only evaluates object predictions (bounding-box/segmentation)"
+            )
         if predictions:
-            return sum([prediction.class_probs.max() for prediction in predictions]) / len(predictions)
+            return sum(
+                [prediction.class_probs.max() for prediction in predictions]
+            ) / len(predictions)
         else:
             return 0.0
 
@@ -64,18 +70,26 @@ class Entropy(AcquisitionFunction):
         )
 
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
         # silence divide by zero warning as the result will be correct (log2(0) is -inf, when multiplied by 0 gives 0)
         # raise exception if invalid (negative) values are found in the pred_proba array
         if isinstance(predictions, np.ndarray):
             predictions_transformed = predictions.reshape(1, -1)
         else:
-            predictions_transformed = np.stack([prediction.class_probs for prediction in predictions])
+            predictions_transformed = np.stack(
+                [prediction.class_probs for prediction in predictions]
+            )
 
         with np.errstate(divide="ignore", invalid="raise"):
             return (
-                -np.multiply(predictions_transformed, np.nan_to_num(np.log2(predictions_transformed)))
+                -np.multiply(
+                    predictions_transformed,
+                    np.nan_to_num(np.log2(predictions_transformed)),
+                )
                 .sum(axis=1)
                 .mean()
             )
@@ -106,12 +120,17 @@ class LeastConfidence(AcquisitionFunction):
         )
 
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
         if isinstance(predictions, np.ndarray):
             predictions_transformed = predictions.reshape(1, -1)
         else:
-            predictions_transformed = np.stack([prediction.class_probs for prediction in predictions])
+            predictions_transformed = np.stack(
+                [prediction.class_probs for prediction in predictions]
+            )
 
         return (1 - predictions_transformed.max(axis=1)).mean()
 
@@ -138,12 +157,17 @@ class Margin(AcquisitionFunction):
         )
 
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
         if isinstance(predictions, np.ndarray):
             predictions_transformed = predictions.reshape(1, -1)
         else:
-            predictions_transformed = np.stack([prediction.class_probs for prediction in predictions])
+            predictions_transformed = np.stack(
+                [prediction.class_probs for prediction in predictions]
+            )
 
         # move the second highest and highest class prediction values to the last two columns respectively
         preds = np.partition(predictions_transformed, -2)
@@ -175,11 +199,16 @@ class Variance(AcquisitionFunction):
         )
 
     def score_predictions(
-        self, predictions: Union[np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]]
+        self,
+        predictions: Union[
+            np.ndarray, List[Union[BoundingBoxPrediction, SegmentationPrediction]]
+        ],
     ) -> float:
         if isinstance(predictions, np.ndarray):
             predictions_transformed = predictions.reshape(1, -1)
         else:
-            predictions_transformed = np.stack([prediction.class_probs for prediction in predictions])
+            predictions_transformed = np.stack(
+                [prediction.class_probs for prediction in predictions]
+            )
 
         return predictions_transformed.var(axis=1).mean()

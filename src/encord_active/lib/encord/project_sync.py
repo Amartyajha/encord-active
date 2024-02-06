@@ -45,35 +45,55 @@ class LabelRowDataUnit(NamedTuple):
 
 
 def update_embedding_identifiers(
-    project_file_structure: ProjectFileStructure, embedding_type: EmbeddingType, renaming_map: dict[str, str]
+    project_file_structure: ProjectFileStructure,
+    embedding_type: EmbeddingType,
+    renaming_map: dict[str, str],
 ):
     def _update_identifiers(embedding: LabelEmbedding, renaming_map: dict[str, str]):
         old_lr, old_du = embedding["label_row"], embedding["data_unit"]
-        new_lr, new_du = renaming_map.get(old_lr, old_lr), renaming_map.get(old_du, old_du)
+        new_lr, new_du = (
+            renaming_map.get(old_lr, old_lr),
+            renaming_map.get(old_du, old_du),
+        )
         embedding["label_row"] = new_lr
         embedding["data_unit"] = new_du
-        embedding["url"] = embedding["url"].replace(old_du, new_du).replace(old_lr, new_lr)
+        embedding["url"] = (
+            embedding["url"].replace(old_du, new_du).replace(old_lr, new_lr)
+        )
         return embedding
 
     label_embeddings = load_label_embeddings(embedding_type, project_file_structure)
-    updated_label_embeddings = [_update_identifiers(up, renaming_map) for up in label_embeddings]
-    save_label_embeddings(embedding_type, project_file_structure, updated_label_embeddings)
+    updated_label_embeddings = [
+        _update_identifiers(up, renaming_map) for up in label_embeddings
+    ]
+    save_label_embeddings(
+        embedding_type, project_file_structure, updated_label_embeddings
+    )
 
 
 def update_2d_embedding_identifiers(
-    project_file_structure: ProjectFileStructure, embedding_type: EmbeddingType, renaming_map: dict[str, str]
+    project_file_structure: ProjectFileStructure,
+    embedding_type: EmbeddingType,
+    renaming_map: dict[str, str],
 ):
     def _update_identifiers(identifier: str):
         old_lr, old_du, *_ = identifier.split("_", 3)
-        new_lr, new_du = renaming_map.get(old_lr, old_lr), renaming_map.get(old_du, old_du)
+        new_lr, new_du = (
+            renaming_map.get(old_lr, old_lr),
+            renaming_map.get(old_du, old_du),
+        )
         return identifier.replace(old_du, new_du).replace(old_lr, new_lr)
 
-    embedding_file = project_file_structure.get_embeddings_file(embedding_type, reduced=True)
+    embedding_file = project_file_structure.get_embeddings_file(
+        embedding_type, reduced=True
+    )
     if not embedding_file.is_file():
         return
 
     embeddings = pickle.loads(embedding_file.read_bytes())
-    embeddings["identifier"] = [_update_identifiers(id) for id in embeddings["identifier"]]
+    embeddings["identifier"] = [
+        _update_identifiers(id) for id in embeddings["identifier"]
+    ]
     embedding_file.write_bytes(pickle.dumps(embeddings))
 
 
@@ -92,7 +112,9 @@ def replace_uids(
     new_project_hash: str,
     dataset_hash: str,
 ):
-    label_row_meta = json.loads(project_file_structure.label_row_meta.read_text(encoding="utf-8"))
+    label_row_meta = json.loads(
+        project_file_structure.label_row_meta.read_text(encoding="utf-8")
+    )
 
     renaming_map = {old_project_hash: new_project_hash}
     for x in label_row_meta.values():
@@ -124,9 +146,17 @@ def _replace_uids(
     replace_in_files(project_file_structure, renaming_map)
     with DBConnection(project_file_structure) as conn:
         MergedMetrics(conn).replace_identifiers(renaming_map)
-    for embedding_type in [EmbeddingType.IMAGE, EmbeddingType.CLASSIFICATION, EmbeddingType.OBJECT]:
-        update_embedding_identifiers(project_file_structure, embedding_type, renaming_map)
-        update_2d_embedding_identifiers(project_file_structure, embedding_type, renaming_map)
+    for embedding_type in [
+        EmbeddingType.IMAGE,
+        EmbeddingType.CLASSIFICATION,
+        EmbeddingType.OBJECT,
+    ]:
+        update_embedding_identifiers(
+            project_file_structure, embedding_type, renaming_map
+        )
+        update_2d_embedding_identifiers(
+            project_file_structure, embedding_type, renaming_map
+        )
 
     if original_mappings:
         new_mappings = {renaming_map[k]: v for k, v in original_mappings.items()}
@@ -160,17 +190,30 @@ def create_filtered_embeddings(
     for csv_embedding_file in curr_project_structure.embeddings.glob("*.csv"):
         csv_df = pd.read_csv(csv_embedding_file, index_col=0)
         filtered_csv_df = csv_df[csv_df.index.isin(filtered_df.identifier)]
-        filtered_csv_df.to_csv(target_project_structure.embeddings / csv_embedding_file.name)
-    for embedding_type in [EmbeddingType.IMAGE, EmbeddingType.CLASSIFICATION, EmbeddingType.OBJECT]:
+        filtered_csv_df.to_csv(
+            target_project_structure.embeddings / csv_embedding_file.name
+        )
+    for embedding_type in [
+        EmbeddingType.IMAGE,
+        EmbeddingType.CLASSIFICATION,
+        EmbeddingType.OBJECT,
+    ]:
         label_embeddings = load_label_embeddings(embedding_type, curr_project_structure)
         label_embeddings = [
             le
             for le in label_embeddings
-            if le["label_row"] in filtered_label_rows and le["data_unit"] in filtered_data_hashes
+            if le["label_row"] in filtered_label_rows
+            and le["data_unit"] in filtered_data_hashes
         ]
-        save_label_embeddings(embedding_type, target_project_structure, label_embeddings)
+        save_label_embeddings(
+            embedding_type, target_project_structure, label_embeddings
+        )
 
-    for embedding_type in [EmbeddingType.IMAGE, EmbeddingType.CLASSIFICATION, EmbeddingType.OBJECT]:
+    for embedding_type in [
+        EmbeddingType.IMAGE,
+        EmbeddingType.CLASSIFICATION,
+        EmbeddingType.OBJECT,
+    ]:
         curr_embedding_file = curr_project_structure.get_embeddings_file(embedding_type)
         if not curr_embedding_file.exists():
             continue
@@ -180,24 +223,41 @@ def create_filtered_embeddings(
             if embedding_type == EmbeddingType.IMAGE:
                 label_row_du_hashes = filtered_df.identifier.str.slice(stop=73)
                 embeddings_df = embeddings_df[
-                    embeddings_df[["label_row", "data_unit"]].agg("_".join, axis=1).isin(label_row_du_hashes)
+                    embeddings_df[["label_row", "data_unit"]]
+                    .agg("_".join, axis=1)
+                    .isin(label_row_du_hashes)
                 ]
             else:
                 label_hashes = filtered_df.identifier.str.split("_").str.get(3).dropna()
-                embeddings_df = embeddings_df[embeddings_df["labelHash"].isin(label_hashes)]
+                embeddings_df = embeddings_df[
+                    embeddings_df["labelHash"].isin(label_hashes)
+                ]
             filtered_embeddings = embeddings_df.to_dict(orient="records")
-            target_project_structure.get_embeddings_file(embedding_type).write_bytes(pickle.dumps(filtered_embeddings))
+            target_project_structure.get_embeddings_file(embedding_type).write_bytes(
+                pickle.dumps(filtered_embeddings)
+            )
             EmbeddingIndex.from_project(target_project_structure, embedding_type)
-            generate_2d_embedding_data(embedding_type, target_project_structure, embeddings)
+            generate_2d_embedding_data(
+                embedding_type, target_project_structure, embeddings
+            )
 
 
 def get_filtered_objects(filtered_labels, label_row_hash, data_unit_hash, objects):
-    return [obj for obj in objects if (label_row_hash, data_unit_hash, obj["objectHash"]) in filtered_labels]
-
-
-def get_filtered_classifications(filtered_labels, label_row_hash, data_unit_hash, classifications):
     return [
-        obj for obj in classifications if (label_row_hash, data_unit_hash, obj["classificationHash"]) in filtered_labels
+        obj
+        for obj in objects
+        if (label_row_hash, data_unit_hash, obj["objectHash"]) in filtered_labels
+    ]
+
+
+def get_filtered_classifications(
+    filtered_labels, label_row_hash, data_unit_hash, classifications
+):
+    return [
+        obj
+        for obj in classifications
+        if (label_row_hash, data_unit_hash, obj["classificationHash"])
+        in filtered_labels
     ]
 
 
@@ -211,7 +271,9 @@ def copy_filtered_data(
     if curr_project_structure.mappings.is_file():
         hash_mappings = json.loads(curr_project_structure.mappings.read_text())
         filtered_hash_mappings = {
-            k: v for k, v in hash_mappings.items() if k in filtered_label_rows or k in filtered_data_hashes
+            k: v
+            for k, v in hash_mappings.items()
+            if k in filtered_label_rows or k in filtered_data_hashes
         }
         target_project_structure.mappings.write_text(json.dumps(filtered_hash_mappings))
         target_project_structure = ProjectFileStructure(
@@ -221,14 +283,20 @@ def copy_filtered_data(
     local_data_mapping = {}
     label_row_mapping = {}
     for label_row_hash in filtered_label_rows:
-        current_label_row_structure = curr_project_structure.label_row_structure(label_row_hash)
+        current_label_row_structure = curr_project_structure.label_row_structure(
+            label_row_hash
+        )
         for data_unit in current_label_row_structure.iter_data_unit():
             if data_unit.du_hash in filtered_data_hashes:
-                data_unit_file_path = url_to_file_path(data_unit.signed_url, curr_project_structure.project_dir)
+                data_unit_file_path = url_to_file_path(
+                    data_unit.signed_url, curr_project_structure.project_dir
+                )
                 if data_unit_file_path is not None:
                     old_data = data_unit_file_path
                     if not target_project_structure.local_data_store.exists():
-                        target_project_structure.local_data_store.mkdir(parents=True, exist_ok=True)
+                        target_project_structure.local_data_store.mkdir(
+                            parents=True, exist_ok=True
+                        )
 
                     # Create local clone if needed.
                     new_file = target_project_structure.local_data_store / old_data.name
@@ -236,33 +304,61 @@ def copy_filtered_data(
                     new_file.symlink_to(old_data, target_is_directory=False)
 
         label_row = current_label_row_structure.label_row_json
-        label_row["data_units"] = {k: v for k, v in label_row["data_units"].items() if k in filtered_data_hashes}
+        label_row["data_units"] = {
+            k: v
+            for k, v in label_row["data_units"].items()
+            if k in filtered_data_hashes
+        }
 
         for data_unit_hash, v in label_row["data_units"].items():
             if "objects" in label_row["data_units"][data_unit_hash]["labels"]:
-                label_row["data_units"][data_unit_hash]["labels"]["objects"] = get_filtered_objects(
-                    filtered_labels, label_row_hash, data_unit_hash, v["labels"]["objects"]
+                label_row["data_units"][data_unit_hash]["labels"][
+                    "objects"
+                ] = get_filtered_objects(
+                    filtered_labels,
+                    label_row_hash,
+                    data_unit_hash,
+                    v["labels"]["objects"],
                 )
-                label_row["data_units"][data_unit_hash]["labels"]["classifications"] = get_filtered_classifications(
-                    filtered_labels, label_row_hash, data_unit_hash, v["labels"]["classifications"]
+                label_row["data_units"][data_unit_hash]["labels"][
+                    "classifications"
+                ] = get_filtered_classifications(
+                    filtered_labels,
+                    label_row_hash,
+                    data_unit_hash,
+                    v["labels"]["classifications"],
                 )
                 continue
-            for label_no, label_item in label_row["data_units"][data_unit_hash]["labels"].items():
-                label_row["data_units"][data_unit_hash]["labels"][label_no]["objects"] = get_filtered_objects(
-                    filtered_labels, label_row_hash, data_unit_hash, v["labels"][label_no]["objects"]
+            for label_no, label_item in label_row["data_units"][data_unit_hash][
+                "labels"
+            ].items():
+                label_row["data_units"][data_unit_hash]["labels"][label_no][
+                    "objects"
+                ] = get_filtered_objects(
+                    filtered_labels,
+                    label_row_hash,
+                    data_unit_hash,
+                    v["labels"][label_no]["objects"],
                 )
                 label_row["data_units"][data_unit_hash]["labels"][label_no][
                     "classifications"
                 ] = get_filtered_classifications(
-                    filtered_labels, label_row_hash, data_unit_hash, v["labels"][label_no]["classifications"]
+                    filtered_labels,
+                    label_row_hash,
+                    data_unit_hash,
+                    v["labels"][label_no]["classifications"],
                 )
 
         filtered_label_hashes = {f[2] for f in filtered_labels}
         label_row["object_answers"] = {
-            k: v for k, v in label_row["object_answers"].items() if k in filtered_label_hashes
+            k: v
+            for k, v in label_row["object_answers"].items()
+            if k in filtered_label_hashes
         }
         label_row["classification_answers"] = {
-            k: v for k, v in label_row["classification_answers"].items() if k in filtered_label_hashes
+            k: v
+            for k, v in label_row["classification_answers"].items()
+            if k in filtered_label_hashes
         }
         label_row_mapping[label_row_hash] = label_row
 
@@ -271,7 +367,11 @@ def copy_filtered_data(
             where={
                 "label_hash": {"in": list(filtered_label_rows)},
             },
-            include={"data_units": {"where": {"data_hash": {"in": list(filtered_data_hashes)}}}},
+            include={
+                "data_units": {
+                    "where": {"data_hash": {"in": list(filtered_data_hashes)}}
+                }
+            },
         )
     with PrismaConnection(target_project_structure) as conn:
         for label_row_db in all_label_rows:
@@ -284,7 +384,9 @@ def copy_filtered_data(
                                 "data_hash": data_unit.data_hash,
                                 "data_title": data_unit.data_title,
                                 "frame": data_unit.frame,
-                                "data_uri": local_data_mapping.get(data_unit.data_uri, data_unit.data_uri)
+                                "data_uri": local_data_mapping.get(
+                                    data_unit.data_uri, data_unit.data_uri
+                                )
                                 if data_unit.data_uri is not None
                                 else None,
                                 "width": data_unit.width,
@@ -294,7 +396,9 @@ def copy_filtered_data(
                             for data_unit in (label_row_db.data_units or [])
                         ]
                     },
-                    "label_row_json": json.dumps(label_row_mapping[label_row_db.label_hash or ""]),
+                    "label_row_json": json.dumps(
+                        label_row_mapping[label_row_db.label_hash or ""]
+                    ),
                     "data_hash": label_row_db.data_hash,
                     "data_title": label_row_db.data_title,
                     "data_type": label_row_db.data_type,
@@ -322,7 +426,9 @@ def create_filtered_metrics(
         filtered_csv_df = csv_df[csv_df.index.isin(filtered_df.identifier)]
         filtered_csv_df.to_csv(target_project_structure.metrics / csv_metric_file.name)
 
-        metric_json_path = Path(csv_metric_file.as_posix().rsplit(".", 1)[0] + ".meta.json")
+        metric_json_path = Path(
+            csv_metric_file.as_posix().rsplit(".", 1)[0] + ".meta.json"
+        )
         metric_meta = MetricMetadata.parse_file(metric_json_path)
         metric_meta.stats.num_rows = filtered_csv_df.shape[0]
         metric_meta.stats.min_value = float(filtered_csv_df["score"].min())
@@ -345,7 +451,9 @@ def copy_project_meta(
     project_meta["project_hash"] = str(uuid.uuid4())
     if final_data_version:
         project_meta["data_version"] = final_data_version
-    target_project_structure.project_meta.write_text(yaml.safe_dump(project_meta), encoding="utf-8")
+    target_project_structure.project_meta.write_text(
+        yaml.safe_dump(project_meta), encoding="utf-8"
+    )
 
 
 def copy_image_data_unit_json(
@@ -354,8 +462,14 @@ def copy_image_data_unit_json(
     filtered_data_hashes: set[str],
 ):
     image_data_unit = json.loads(curr_project_structure.image_data_unit.read_text())
-    filtered_image_data_unit = {k: v for k, v in image_data_unit.items() if v["data_hash"] in filtered_data_hashes}
-    target_project_structure.image_data_unit.write_text(json.dumps(filtered_image_data_unit))
+    filtered_image_data_unit = {
+        k: v
+        for k, v in image_data_unit.items()
+        if v["data_hash"] in filtered_data_hashes
+    }
+    target_project_structure.image_data_unit.write_text(
+        json.dumps(filtered_image_data_unit)
+    )
 
 
 def copy_label_row_meta_json(
@@ -364,6 +478,10 @@ def copy_label_row_meta_json(
     filtered_label_rows: set[str],
 ) -> dict:
     label_row_meta = json.loads(curr_project_structure.label_row_meta.read_text())
-    filtered_label_row_meta = {k: v for k, v in label_row_meta.items() if k in filtered_label_rows}
-    target_project_structure.label_row_meta.write_text(json.dumps(filtered_label_row_meta))
+    filtered_label_row_meta = {
+        k: v for k, v in label_row_meta.items() if k in filtered_label_rows
+    }
+    target_project_structure.label_row_meta.write_text(
+        json.dumps(filtered_label_row_meta)
+    )
     return filtered_label_row_meta

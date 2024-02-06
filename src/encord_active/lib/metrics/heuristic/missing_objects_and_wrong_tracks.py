@@ -88,7 +88,9 @@ hash, they will be flagged as a potentially broken track.
         self.threshold = threshold
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
         found_valid = False
         found_sequential = False
@@ -101,12 +103,19 @@ hash, they will be flagged as a potentially broken track.
             frame = iterator.frame
 
             data_type = label_row["data_type"]
-            if not (data_type == "video" or (data_type == "img_group" and len(label_row["data_units"]) > 1)):
+            if not (
+                data_type == "video"
+                or (data_type == "img_group" and len(label_row["data_units"]) > 1)
+            ):
                 # Not a sequence
                 continue
             found_sequential = True
 
-            objects = [o for o in data_unit["labels"].get("objects", []) if o["shape"] in valid_annotation_types]
+            objects = [
+                o
+                for o in data_unit["labels"].get("objects", [])
+                if o["shape"] in valid_annotation_types
+            ]
             polygons = list(map(get_polygon, objects))
 
             if len(polygons) == 0:
@@ -148,7 +157,8 @@ hash, they will be flagged as a potentially broken track.
                         best_iou = iou
                         best_object = old_obj
 
-                if best_iou < self.threshold / 2:  # Skip objects that are not similar enough.
+                # Skip objects that are not similar enough.
+                if best_iou < self.threshold / 2:
                     error_store.add(object=obj, frame=frame, score=1.0)
                     continue
 
@@ -220,7 +230,9 @@ hash, they will be flagged as a potentially broken track.
                     writer.write(score, _obj, description=desc)
 
         if not all(annotated.values()):
-            logger.warning("Found errors that were not logged. This should not have happened.")
+            logger.warning(
+                "Found errors that were not logged. This should not have happened."
+            )
             for k, v in annotated.items():
                 if not v:
                     logger.info(k)

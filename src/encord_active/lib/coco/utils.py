@@ -3,9 +3,14 @@ from pycocotools.mask import decode, frPyObjects, merge
 
 def find_ontology_object(ontology: dict, encord_name: str):
     try:
-        obj = next((o for o in ontology["objects"] if o["name"].lower() == encord_name.lower()))
+        obj = next(
+            (o for o in ontology["objects"] if o["name"].lower() == encord_name.lower())
+        )
     except StopIteration:
-        raise ValueError(f"Couldn't match Encord ontology name `{encord_name}` to objects in the " f"Encord ontology.")
+        raise ValueError(
+            f"Couldn't match Encord ontology name `{encord_name}` to objects in the "
+            f"Encord ontology."
+        )
     return obj
 
 

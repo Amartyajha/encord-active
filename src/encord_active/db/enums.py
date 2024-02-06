@@ -39,7 +39,8 @@ AnnotationEnums: Dict[str, EnumDefinition] = {
         enum_type=EnumType.ENUM,
         title="Annotation Type",
         values={
-            annotation_type.value: annotation_type.name.replace("_", "").title() for annotation_type in AnnotationType
+            annotation_type.value: annotation_type.name.replace("_", "").title()
+            for annotation_type in AnnotationType
         },
     ),
     "annotation_manual": EnumDefinition(

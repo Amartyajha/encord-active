@@ -81,7 +81,10 @@ def get_size(*args, **kwargs) -> Size:
 
 
 def get_polygon_from_dict(polygon_dict, W, H):
-    return [(polygon_dict[str(i)]["x"] * W, polygon_dict[str(i)]["y"] * H) for i in range(len(polygon_dict))]
+    return [
+        (polygon_dict[str(i)]["x"] * W, polygon_dict[str(i)]["y"] * H)
+        for i in range(len(polygon_dict))
+    ]
 
 
 # DENIS: TODO: focus on doing the parser for now for segmentations for images as it was intended. Seems like
@@ -97,7 +100,9 @@ class CocoEncoder:
     object at any time.
     """
 
-    def __init__(self, labels_list: List[dict], metrics: dict, ontology: OntologyStructure):
+    def __init__(
+        self, labels_list: List[dict], metrics: dict, ontology: OntologyStructure
+    ):
         self._labels_list = labels_list
         self._metrics = metrics
         self._ontology = ontology
@@ -154,7 +159,8 @@ class CocoEncoder:
 
         self._coco_json["info"] = self.get_info()
         self._coco_json["categories"] = self.get_categories()
-        self._coco_json["images"] = self.get_images()  # TODO: remove images without annotations
+        # TODO: remove images without annotations
+        self._coco_json["images"] = self.get_images()
         self._coco_json["annotations"] = self.get_annotations()
 
         return self._coco_json
@@ -210,7 +216,9 @@ class CocoEncoder:
     def get_images(self) -> list:
         """All the data is in the specific label_row"""
         images = []
-        for labels in tqdm(self._labels_list, desc="Downloading data units", position=0, leave=True):
+        for labels in tqdm(
+            self._labels_list, desc="Downloading data units", position=0, leave=True
+        ):
             label_hash = labels["label_hash"]
             for data_unit in labels["data_units"].values():
                 data_type = data_unit["data_type"]
@@ -233,14 +241,15 @@ class CocoEncoder:
         width = data_unit["width"]
 
         for frame_num in data_unit["labels"].keys():
-            dicom_image = self.get_dicom_image(label_hash, data_hash, height, width, int(frame_num))
+            dicom_image = self.get_dicom_image(
+                label_hash, data_hash, height, width, int(frame_num)
+            )
             images.append(dicom_image)
 
         return images
 
     def get_image(self, label_hash: str, data_unit: dict) -> dict:
         # DENIS: we probably want a map of this image id to image hash in our DB, including the image_group hash.
-
         """
         DENIS: next up: here we need to branch off and create the videos
         * coco_url, height, width will be the same
@@ -281,8 +290,12 @@ class CocoEncoder:
         url = data_unit["data_link"]
         data_hash = data_unit["data_hash"]
 
-        destination_path = self._download_file_path.joinpath(Path("data"), Path(label_hash), Path("images"))
-        download_condition = self._download_files and len(list(destination_path.glob("*.png"))) == 0
+        destination_path = self._download_file_path.joinpath(
+            Path("data"), Path(label_hash), Path("images")
+        )
+        download_condition = (
+            self._download_files and len(list(destination_path.glob("*.png"))) == 0
+        )
         if download_condition or self._force_download:
             self.download_video_images(url, destination_path, data_hash, video_title)
 
@@ -291,24 +304,44 @@ class CocoEncoder:
         height = data_unit["height"]
         width = data_unit["width"]
 
-        path_to_video_dir = self._download_file_path.joinpath(Path("videos"), Path(data_hash))
+        path_to_video_dir = self._download_file_path.joinpath(
+            Path("videos"), Path(data_hash)
+        )
         if self._include_unannotated_videos and path_to_video_dir.is_dir():
             # DENIS: log something for transparency?
             for frame_num in range(len(list(path_to_video_dir.iterdir()))):
                 images.append(
-                    self.get_video_image(label_hash, data_hash, video_title, coco_url, height, width, int(frame_num))
+                    self.get_video_image(
+                        label_hash,
+                        data_hash,
+                        video_title,
+                        coco_url,
+                        height,
+                        width,
+                        int(frame_num),
+                    )
                 )
         else:
             for frame_num in data_unit["labels"].keys():
                 images.append(
-                    self.get_video_image(label_hash, data_hash, video_title, coco_url, height, width, int(frame_num))
+                    self.get_video_image(
+                        label_hash,
+                        data_hash,
+                        video_title,
+                        coco_url,
+                        height,
+                        width,
+                        int(frame_num),
+                    )
                 )
 
         return images
 
     # def get_frame_numbers(self, data_unit: dict) -> Iterator:  # DENIS: use this to remove the above if/else.
 
-    def get_dicom_image(self, label_hash: str, data_hash: str, height: int, width: int, frame_num: int) -> dict:
+    def get_dicom_image(
+        self, label_hash: str, data_hash: str, height: int, width: int, frame_num: int
+    ) -> dict:
         image_id = len(self._data_hash_to_image_id_map)
         self._data_hash_to_image_id_map[(data_hash, frame_num)] = image_id
 
@@ -325,7 +358,14 @@ class CocoEncoder:
         }
 
     def get_video_image(
-        self, label_hash: str, data_hash: str, video_title: str, coco_url: str, height: int, width: int, frame_num: int
+        self,
+        label_hash: str,
+        data_hash: str,
+        video_title: str,
+        coco_url: str,
+        height: int,
+        width: int,
+        frame_num: int,
     ):
         image_id = len(self._data_hash_to_image_id_map)
         self._data_hash_to_image_id_map[(data_hash, frame_num)] = image_id
@@ -351,7 +391,9 @@ class CocoEncoder:
         video_file_path = Path("videos").joinpath(Path(data_hash), frame_file_name)
         return str(video_file_path)
 
-    def download_video_images(self, url: str, destination_path: Path, data_hash: str, video_title: str) -> None:
+    def download_video_images(
+        self, url: str, destination_path: Path, data_hash: str, video_title: str
+    ) -> None:
         video_decode_path = destination_path / "video"
         video_path = video_decode_path / video_title
         video_decode_path.mkdir(parents=True, exist_ok=True)
@@ -382,20 +424,30 @@ class CocoEncoder:
                     for frame_num, frame_item in data_unit["labels"].items():
                         image_id = self.get_image_id(data_hash, int(frame_num))
                         objects = frame_item["objects"]
-                        object_metrics = copy.deepcopy(data_unit_metrics[f"{frame_num:05d}"])
-                        annotations.extend(self.get_annotation(objects, object_metrics, image_id))
+                        object_metrics = copy.deepcopy(
+                            data_unit_metrics[f"{frame_num:05d}"]
+                        )
+                        annotations.extend(
+                            self.get_annotation(objects, object_metrics, image_id)
+                        )
 
                 else:
                     image_id = self.get_image_id(data_hash)
                     objects = data_unit["labels"].get("objects", [])
                     frame_num = int(data_unit["data_sequence"])
-                    object_metrics = copy.deepcopy(data_unit_metrics[f"{frame_num:05d}"])
-                    annotations.extend(self.get_annotation(objects, object_metrics, image_id))
+                    object_metrics = copy.deepcopy(
+                        data_unit_metrics[f"{frame_num:05d}"]
+                    )
+                    annotations.extend(
+                        self.get_annotation(objects, object_metrics, image_id)
+                    )
 
         return annotations
 
     # DENIS: naming with plural/singular
-    def get_annotation(self, objects: List[dict], metrics: dict, image_id: int) -> List[dict]:
+    def get_annotation(
+        self, objects: List[dict], metrics: dict, image_id: int
+    ) -> List[dict]:
         annotations = []
         frame_level = metrics.pop("frame-level")
         for object_ in objects:
@@ -430,11 +482,16 @@ class CocoEncoder:
                 res_dict["frame_metrics"] = frame_level
                 res_dict["object_metrics"] = metrics.get(object_["objectHash"], {})
                 annotations.append(
-                    to_attributes_field(res_dict, include_null_annotations=self._include_null_annotations)
+                    to_attributes_field(
+                        res_dict,
+                        include_null_annotations=self._include_null_annotations,
+                    )
                 )
         return annotations
 
-    def get_bounding_box(self, object_: dict, image_id: int, size: Size) -> Union[CocoAnnotation, SuperClass, None]:
+    def get_bounding_box(
+        self, object_: dict, image_id: int, size: Size
+    ) -> Union[CocoAnnotation, SuperClass, None]:
         if not all(k in object_["boundingBox"] for k in ["x", "y", "w", "h"]):
             return None
 
@@ -450,7 +507,12 @@ class CocoEncoder:
         segmentation = [[x, y, x + w, y, x + w, y + h, x, y + h]]
         bbox = (x, y, w, h)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
 
         return CocoAnnotation(
             area,
@@ -467,7 +529,9 @@ class CocoEncoder:
     def get_rotatable_bounding_box(
         self, object_: dict, image_id: int, size: Size
     ) -> Union[CocoAnnotation, SuperClass, None]:
-        if not all(k in object_["rotatableBoundingBox"] for k in ["x", "y", "w", "h", "theta"]):
+        if not all(
+            k in object_["rotatableBoundingBox"] for k in ["x", "y", "w", "h", "theta"]
+        ):
             return None
 
         x, y = (
@@ -482,7 +546,12 @@ class CocoEncoder:
         segmentation = [[x, y, x + w, y, x + w, y + h, x, y + h]]
         bbox = (x, y, w, h)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
         rotation = object_["rotatableBoundingBox"]["theta"]
 
         return CocoAnnotation(
@@ -498,7 +567,9 @@ class CocoEncoder:
             rotation=rotation,
         )
 
-    def get_polygon(self, object_: dict, image_id: int, size: Size) -> Union[CocoAnnotation, SuperClass, None]:
+    def get_polygon(
+        self, object_: dict, image_id: int, size: Size
+    ) -> Union[CocoAnnotation, SuperClass, None]:
         if len(object_["polygon"]) < 3:
             return None
 
@@ -511,7 +582,12 @@ class CocoEncoder:
 
         bbox = (x, y, w, h)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
 
         return CocoAnnotation(
             area,
@@ -525,7 +601,9 @@ class CocoEncoder:
             encord_track_uuid=encord_track_uuid,
         )
 
-    def get_polyline(self, object_: dict, image_id: int, size: Size) -> Union[CocoAnnotation, SuperClass, None]:
+    def get_polyline(
+        self, object_: dict, image_id: int, size: Size
+    ) -> Union[CocoAnnotation, SuperClass, None]:
         """Polylines are technically not supported in COCO, but here we use a trick to allow a representation."""
         if len(object_["polyline"]) < 2:
             return None
@@ -536,7 +614,12 @@ class CocoEncoder:
         area = 0
         bbox = self.get_bbox_for_polyline(polygon)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
 
         return CocoAnnotation(
             area,
@@ -585,7 +668,9 @@ class CocoEncoder:
 
         return polygon
 
-    def get_point(self, object_: dict, image_id: int, size: Size) -> Union[CocoAnnotation, SuperClass, None]:
+    def get_point(
+        self, object_: dict, image_id: int, size: Size
+    ) -> Union[CocoAnnotation, SuperClass, None]:
         if "0" not in object_["point"]:
             return None
 
@@ -601,7 +686,12 @@ class CocoEncoder:
 
         bbox = (x, y, w, h)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
 
         return CocoAnnotation(
             area,
@@ -617,7 +707,9 @@ class CocoEncoder:
             encord_track_uuid=encord_track_uuid,
         )
 
-    def get_skeleton(self, object_: dict, image_id: int, size: Size) -> Union[CocoAnnotation, SuperClass, None]:
+    def get_skeleton(
+        self, object_: dict, image_id: int, size: Size
+    ) -> Union[CocoAnnotation, SuperClass, None]:
         # DENIS: next up: check how this is visualised.
         if len(object_["skeleton"]) < 1:
             return None
@@ -642,7 +734,12 @@ class CocoEncoder:
         # DENIS: think if the next two lines should be in `get_coco_annotation_default_fields`
         bbox = (x, y, w, h)
         category_id = self.get_category_id(object_)
-        id_, iscrowd, track_id, encord_track_uuid = self.get_coco_annotation_default_fields(object_)
+        (
+            id_,
+            iscrowd,
+            track_id,
+            encord_track_uuid,
+        ) = self.get_coco_annotation_default_fields(object_)
 
         return CocoAnnotation(
             area,
@@ -668,7 +765,9 @@ class CocoEncoder:
                 f"ensure that the ontology matches the labels provided."
             )
 
-    def get_coco_annotation_default_fields(self, object_: dict) -> Tuple[int, int, Optional[int], Optional[str]]:
+    def get_coco_annotation_default_fields(
+        self, object_: dict
+    ) -> Tuple[int, int, Optional[int], Optional[str]]:
         id_ = self.next_annotation_id()
         iscrowd = 0
         track_id = self.get_and_set_track_id(object_hash=object_["objectHash"])
@@ -713,7 +812,9 @@ def download_file(
                 f.flush()
 
 
-def generate_coco_file(df: pd.DataFrame, project_dir: Path, ontology_file: Path) -> dict:
+def generate_coco_file(
+    df: pd.DataFrame, project_dir: Path, ontology_file: Path
+) -> dict:
     """
     Generate coco JSON file given dataframe.
 
@@ -786,16 +887,29 @@ def df_to_nested_dict(df: pd.DataFrame) -> dict:
         frame_dict = data_dict.setdefault(frame_number, {})
         frame_dict.setdefault("frame-level", {})
 
-        tags = [t.name for t in (row["tags"] if "tags" in row and isinstance(row["tags"], list) else [])]
+        tags = [
+            t.name
+            for t in (
+                row["tags"] if "tags" in row and isinstance(row["tags"], list) else []
+            )
+        ]
         if object_hashes is None:  # Frame level metric
             frame_dict.setdefault("frame-level", {}).update(
-                {k: v for k, v in row.items() if k not in ["identifier", "url", "tags"] and not pd.isnull(v)}
+                {
+                    k: v
+                    for k, v in row.items()
+                    if k not in ["identifier", "url", "tags"] and not pd.isnull(v)
+                }
             )
             frame_dict["frame-level"].setdefault("tags", []).extend(tags)
         else:  # Object level metric
             for object_hash in object_hashes:
                 frame_dict.setdefault(object_hash, {}).update(
-                    {k: v for k, v in row.items() if k not in ["identifier", "url", "tags"] and not pd.isnull(v)}
+                    {
+                        k: v
+                        for k, v in row.items()
+                        if k not in ["identifier", "url", "tags"] and not pd.isnull(v)
+                    }
                 )
                 frame_dict[object_hash].setdefault("tags", []).extend(tags)
     return metrics

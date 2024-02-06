@@ -12,8 +12,12 @@ class ProjectSimilaritySchema(pa.SchemaModel):
     dissimilarity_score: Series[float] = pa.Field(coerce=True)
 
 
-def plot_project_similarity_metric_wise(metric_wise_similarity: DataFrame[ProjectSimilaritySchema]) -> go.Figure:
-    metric_wise_similarity.sort_values(by=ProjectSimilaritySchema.dissimilarity_score, inplace=True)
+def plot_project_similarity_metric_wise(
+    metric_wise_similarity: DataFrame[ProjectSimilaritySchema]
+) -> go.Figure:
+    metric_wise_similarity.sort_values(
+        by=ProjectSimilaritySchema.dissimilarity_score, inplace=True
+    )
 
     fig = px.bar(
         metric_wise_similarity,
@@ -31,14 +35,21 @@ def plot_project_similarity_metric_wise(metric_wise_similarity: DataFrame[Projec
 
 
 def render_2d_metric_similarity_plot(
-    project_values: pd.DataFrame, metric_name_1: str, metric_name_2: str, project_name_1: str, project_name_2: str
+    project_values: pd.DataFrame,
+    metric_name_1: str,
+    metric_name_2: str,
+    project_name_1: str,
+    project_name_2: str,
 ):
     fig = px.scatter(
         project_values,
         x=metric_name_1,
         y=metric_name_2,
         color="project",
-        color_discrete_map={project_name_1: Color.PURPLE.value, project_name_2: Color.RED.value},
+        color_discrete_map={
+            project_name_1: Color.PURPLE.value,
+            project_name_2: Color.RED.value,
+        },
         opacity=0.7,
         title="2D metric comparison",
         template="plotly",

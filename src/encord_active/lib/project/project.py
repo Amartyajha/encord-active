@@ -71,7 +71,9 @@ class Project:
                 store_data_locally=False,
             )
         self.project_hash: str = ""
-        self.ontology: OntologyStructure = OntologyStructure.from_dict(dict(objects=[], classifications=[]))
+        self.ontology: OntologyStructure = OntologyStructure.from_dict(
+            dict(objects=[], classifications=[])
+        )
         self.label_row_metas: Dict[str, LabelRowMetadata] = {}
         self.label_rows: Dict[str, LabelRow] = {}
 
@@ -88,9 +90,13 @@ class Project:
             return self
 
         if not self.file_structure.project_dir.exists():
-            raise FileNotFoundError(f"`{self.file_structure.project_dir}` does not exist")
+            raise FileNotFoundError(
+                f"`{self.file_structure.project_dir}` does not exist"
+            )
         if not self.file_structure.project_dir.is_dir():
-            raise NotADirectoryError(f"`{self.file_structure.project_dir}` does not point to a directory")
+            raise NotADirectoryError(
+                f"`{self.file_structure.project_dir}` does not point to a directory"
+            )
 
         self.project_meta = fetch_project_meta(self.file_structure.project_dir)
         self.project_hash = self.project_meta["project_hash"]
@@ -130,7 +136,9 @@ class Project:
 
         return self.load()
 
-    def refresh(self, initialize_label_rows: bool = False) -> ProjectRefreshChangeResponse:
+    def refresh(
+        self, initialize_label_rows: bool = False
+    ) -> ProjectRefreshChangeResponse:
         """
         Refresh project data and labels using its remote project in Encord Annotate.
 
@@ -143,11 +151,15 @@ class Project:
 
         self.project_meta = self.file_structure.load_project_meta()
         if not self.project_meta.get("has_remote", False):
-            raise AttributeError("The project does not have a remote project associated to it.")
+            raise AttributeError(
+                "The project does not have a remote project associated to it."
+            )
 
         project_hash = self.project_meta.get("project_hash")
         if project_hash is None:
-            raise AttributeError("The project does not have a remote project associated to it.")
+            raise AttributeError(
+                "The project does not have a remote project associated to it."
+            )
 
         ssh_key_path = self.project_meta.get("ssh_key_path", app_config.get_ssh_key())
         if ssh_key_path is None:
@@ -163,31 +175,51 @@ class Project:
         new_ontology = OntologyStructure.from_dict(encord_project.ontology)
         self.save_ontology(new_ontology)
 
-        has_uninitialized_rows = not all(row["label_hash"] is not None for row in encord_project.label_rows)
+        has_uninitialized_rows = not all(
+            row["label_hash"] is not None for row in encord_project.label_rows
+        )
         if has_uninitialized_rows and initialize_label_rows:
-            untoched_data = list(filter(lambda x: x.label_hash is None, encord_project.list_label_rows_v2()))
-            collect_async(lambda x: x.initialise_labels(), untoched_data, desc="Preparing uninitialized label rows")
+            untoched_data = list(
+                filter(
+                    lambda x: x.label_hash is None, encord_project.list_label_rows_v2()
+                )
+            )
+            collect_async(
+                lambda x: x.initialise_labels(),
+                untoched_data,
+                desc="Preparing uninitialized label rows",
+            )
             encord_project.refetch_data()
 
         data_changed = self.__download_and_save_label_rows(encord_project)
 
         stored_edit_times: list[datetime] = list(
-            filter(None, [meta.last_edited_at for meta in self.__load_label_row_meta().values()])
+            filter(
+                None,
+                [meta.last_edited_at for meta in self.__load_label_row_meta().values()],
+            )
         )
         latest_stored_edit = max(stored_edit_times) if stored_edit_times else None
         latest_edit_times: list[datetime] = list(
-            filter(None, [meta.last_edited_at for meta in encord_project.list_label_rows_v2()])
+            filter(
+                None,
+                [meta.last_edited_at for meta in encord_project.list_label_rows_v2()],
+            )
         )
         latest_edit = max(latest_edit_times) if latest_edit_times else None
 
-        self.__save_label_row_meta(encord_project)  # Update cached metadata of the label rows (after new data sync)
+        # Update cached metadata of the label rows (after new data sync)
+        self.__save_label_row_meta(encord_project)
 
         return ProjectRefreshChangeResponse(
             data_changed=data_changed,
             labels_changed=data_changed
             or (
                 latest_edit is not None
-                and (latest_stored_edit is None or (latest_edit - latest_stored_edit) > timedelta(seconds=1))
+                and (
+                    latest_stored_edit is None
+                    or (latest_edit - latest_stored_edit) > timedelta(seconds=1)
+                )
             ),
             has_objects=len(new_ontology.objects) > 0,
             has_classifications=len(new_ontology.classifications) > 0,
@@ -217,17 +249,25 @@ class Project:
                 "has_remote": True,
             }
         )
-        project_meta_file_path.write_text(yaml.safe_dump(self.project_meta), encoding="utf-8")
+        project_meta_file_path.write_text(
+            yaml.safe_dump(self.project_meta), encoding="utf-8"
+        )
 
     def save_ontology(self, ontology: OntologyStructure):
         ontology_file_path = self.file_structure.ontology
-        ontology_file_path.write_text(json.dumps(ontology.to_dict(), indent=2), encoding="utf-8")
+        ontology_file_path.write_text(
+            json.dumps(ontology.to_dict(), indent=2), encoding="utf-8"
+        )
 
     def __load_ontology(self):
         ontology_file_path = self.file_structure.ontology
         if not ontology_file_path.exists():
-            raise FileNotFoundError(f"Expected file `ontology.json` at {ontology_file_path.parent}")
-        self.ontology = OntologyStructure.from_dict(json.loads(ontology_file_path.read_text(encoding="utf-8")))
+            raise FileNotFoundError(
+                f"Expected file `ontology.json` at {ontology_file_path.parent}"
+            )
+        self.ontology = OntologyStructure.from_dict(
+            json.loads(ontology_file_path.read_text(encoding="utf-8"))
+        )
 
     def __save_label_row_meta(self, encord_project: EncordProject) -> dict[str, Any]:
         label_row_meta = {
@@ -239,18 +279,29 @@ class Project:
             meta["created_at"] = meta["created_at"].rsplit(".", maxsplit=1)[0]
             meta["last_edited_at"] = meta["last_edited_at"].rsplit(".", maxsplit=1)[0]
 
-        self.file_structure.label_row_meta.write_text(json.dumps(label_row_meta, indent=2), encoding="utf-8")
+        self.file_structure.label_row_meta.write_text(
+            json.dumps(label_row_meta, indent=2), encoding="utf-8"
+        )
         return label_row_meta
 
-    def __load_label_row_meta(self, subset_size: Optional[int] = None) -> dict[str, LabelRowMetadata]:
+    def __load_label_row_meta(
+        self, subset_size: Optional[int] = None
+    ) -> dict[str, LabelRowMetadata]:
         label_row_meta_file_path = self.file_structure.label_row_meta
         if not label_row_meta_file_path.exists():
-            raise FileNotFoundError(f"Expected file `label_row_meta.json` at {label_row_meta_file_path.parent}")
+            raise FileNotFoundError(
+                f"Expected file `label_row_meta.json` at {label_row_meta_file_path.parent}"
+            )
 
         self.label_row_metas = {
-            lr_hash: LabelRowMetadata.from_dict(self.__populate_label_row_metadata_defaults(lr_meta))
+            lr_hash: LabelRowMetadata.from_dict(
+                self.__populate_label_row_metadata_defaults(lr_meta)
+            )
             for lr_hash, lr_meta in itertools.islice(
-                json.loads(label_row_meta_file_path.read_text(encoding="utf-8")).items(), subset_size
+                json.loads(
+                    label_row_meta_file_path.read_text(encoding="utf-8")
+                ).items(),
+                subset_size,
             )
         }
         return self.label_row_metas
@@ -272,7 +323,9 @@ class Project:
             boolean whether new data was downloaded.
 
         """
-        label_rows = self.__download_label_rows_and_data(encord_project, self.file_structure)
+        label_rows = self.__download_label_rows_and_data(
+            encord_project, self.file_structure
+        )
         split_lr_videos(label_rows, self.file_structure)
         logger.info("Data and labels successfully synced from the remote project")
         return len(label_rows) > 0
@@ -281,7 +334,8 @@ class Project:
         self,
         project: EncordProject,
         project_file_structure: ProjectFileStructure,
-        filter_fn: Optional[Callable[..., bool]] = lambda x: x["label_hash"] is not None,
+        filter_fn: Optional[Callable[..., bool]] = lambda x: x["label_hash"]
+        is not None,
         subset_size: Optional[int] = None,
     ) -> List[LabelRow]:
         try:
@@ -290,8 +344,12 @@ class Project:
             current_label_row_metas = dict()
 
         latest_label_row_metas = [
-            LabelRowMetadata.from_dict(self.__populate_label_row_metadata_defaults(lr_meta))
-            for lr_meta in itertools.islice(filter(filter_fn, project.label_rows), subset_size)
+            LabelRowMetadata.from_dict(
+                self.__populate_label_row_metadata_defaults(lr_meta)
+            )
+            for lr_meta in itertools.islice(
+                filter(filter_fn, project.label_rows), subset_size
+            )
         ]
 
         label_rows_to_download: list[str] = []
@@ -300,7 +358,9 @@ class Project:
             if label_row_meta.label_hash not in current_label_row_metas:
                 label_rows_to_download.append(label_row_meta.label_hash)
             else:
-                current_label_row_version_hash = current_label_row_metas[label_row_meta.label_hash].last_edited_at
+                current_label_row_version_hash = current_label_row_metas[
+                    label_row_meta.label_hash
+                ].last_edited_at
                 latest_label_row_version_hash = label_row_meta.last_edited_at
                 if current_label_row_version_hash != latest_label_row_version_hash:
                     label_rows_to_update.append(label_row_meta.label_hash)
@@ -321,7 +381,9 @@ class Project:
         # Download new project data
         if len(label_rows_to_download) > 0:
             operation_description = "Collecting the new data"
-            store_data_locally: bool = project_file_structure.load_project_meta().get("store_data_locally", False)
+            store_data_locally: bool = project_file_structure.load_project_meta().get(
+                "store_data_locally", False
+            )
             if not store_data_locally:
                 operation_description = "Collecting information on the new data"
 
@@ -353,7 +415,9 @@ class Project:
                 }
             )
             for label in labels:
-                self.label_rows[label.label_hash] = LabelRow(json.loads(label.label_row_json))
+                self.label_rows[label.label_hash] = LabelRow(
+                    json.loads(label.label_row_json)
+                )
 
     def __populate_label_row_metadata_defaults(self, lr_dict: dict):
         return {
@@ -370,7 +434,9 @@ def download_label_row(
     project: EncordProject,
     batch: "prisma.Batch",
 ) -> LabelRow:
-    label_row = try_execute(partial(project.get_label_row, get_signed_url=True), 5, {"uid": label_hash})
+    label_row = try_execute(
+        partial(project.get_label_row, get_signed_url=True), 5, {"uid": label_hash}
+    )
     label_row_json = json.dumps(label_row)
     batch.labelrow.upsert(
         where={"data_hash": label_row.data_hash},
@@ -387,7 +453,8 @@ def download_label_row(
             "update": {
                 "label_hash": label_row.label_hash,
                 "data_title": label_row.data_title,
-                "created_at": label_row.created_at,  # don't update this field if it's set in unannotated data
+                # don't update this field if it's set in unannotated data
+                "created_at": label_row.created_at,
                 "last_edited_at": label_row.last_edited_at,
                 "label_row_json": label_row_json,
             },
@@ -401,10 +468,14 @@ def download_data(
     project_file_structure: ProjectFileStructure,
     batch: "prisma.Batch",
 ):
-    store_data_locally: bool = project_file_structure.load_project_meta().get("store_data_locally", False)
+    store_data_locally: bool = project_file_structure.load_project_meta().get(
+        "store_data_locally", False
+    )
     if store_data_locally:
         project_file_structure.local_data_store.mkdir(exist_ok=True)
-    data_units = sorted(label_row.data_units.values(), key=lambda _du: int(_du["data_sequence"]))
+    data_units = sorted(
+        label_row.data_units.values(), key=lambda _du: int(_du["data_sequence"])
+    )
 
     # Skip video frames from being added to the db (they are added after the video processing stage)
     if label_row.data_type == DataType.VIDEO.value:
@@ -444,7 +515,9 @@ def download_data(
                 cache=False,  # Disable cache symlink tricks
             )
             file_url = file_path_to_url(local_path, project_file_structure.project_dir)
-            query_data_input["create"]["data_uri"] = query_data_input["update"]["data_uri"] = file_url
+            query_data_input["create"]["data_uri"] = query_data_input["update"][
+                "data_uri"
+            ] = file_url
         else:
             # The online version doesn't require any additional content, except for the image url,
             # which is not a permalink so best not to add it.
@@ -468,7 +541,9 @@ def download_label_row_and_data(
     return label_row
 
 
-def split_lr_videos(label_rows: List[LabelRow], project_file_structure: ProjectFileStructure) -> List[bool]:
+def split_lr_videos(
+    label_rows: List[LabelRow], project_file_structure: ProjectFileStructure
+) -> List[bool]:
     return collect_async(
         partial(split_lr_video, project_file_structure=project_file_structure),
         filter(lambda lr: lr.data_type == "video", label_rows),
@@ -476,8 +551,12 @@ def split_lr_videos(label_rows: List[LabelRow], project_file_structure: ProjectF
     )
 
 
-def split_lr_video(label_row: LabelRow, project_file_structure: ProjectFileStructure) -> bool:
-    store_data_locally: bool = project_file_structure.load_project_meta().get("store_data_locally", False)
+def split_lr_video(
+    label_row: LabelRow, project_file_structure: ProjectFileStructure
+) -> bool:
+    store_data_locally: bool = project_file_structure.load_project_meta().get(
+        "store_data_locally", False
+    )
     if store_data_locally:
         project_file_structure.local_data_store.mkdir(exist_ok=True)
     """
@@ -491,10 +570,12 @@ def split_lr_video(label_row: LabelRow, project_file_structure: ProjectFileStruc
         du = label_row.data_units[data_hash]
         with tempfile.TemporaryDirectory() as video_dir:
             if store_data_locally:
-                video_path = (project_file_structure.local_data_store / data_hash).with_suffix(
-                    Path(du["data_title"]).suffix
+                video_path = (
+                    project_file_structure.local_data_store / data_hash
+                ).with_suffix(Path(du["data_title"]).suffix)
+                data_uri = file_path_to_url(
+                    video_path, project_dir=project_file_structure.project_dir
                 )
-                data_uri = file_path_to_url(video_path, project_dir=project_file_structure.project_dir)
                 download_file(
                     du["data_link"],
                     project_file_structure.project_dir,
@@ -502,10 +583,18 @@ def split_lr_video(label_row: LabelRow, project_file_structure: ProjectFileStruc
                     cache=False,  # Disable cache symlink tricks
                 )
             else:
-                video_path = (Path(video_dir) / data_hash).with_suffix(Path(du["data_title"]).suffix)
+                video_path = (Path(video_dir) / data_hash).with_suffix(
+                    Path(du["data_title"]).suffix
+                )
                 data_uri = None
-                download_file(du["data_link"], project_dir=project_file_structure.project_dir, destination=video_path)
-                project_file_structure.cached_signed_urls[du["data_hash"]] = du["data_link"]
+                download_file(
+                    du["data_link"],
+                    project_dir=project_file_structure.project_dir,
+                    destination=video_path,
+                )
+                project_file_structure.cached_signed_urls[du["data_hash"]] = du[
+                    "data_link"
+                ]
             num_frames = count_frames(video_path)
             frames_per_second = get_frames_per_second(video_path)
             video_images = Path(video_dir) / "images"

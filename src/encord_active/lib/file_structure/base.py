@@ -72,7 +72,9 @@ class BaseProjectFileStructure:
 
     @abstractmethod
     def data_units(
-        self, where: Optional[List["prisma.types.DataUnitWhereInput"]] = None, include_label_row: bool = False
+        self,
+        where: Optional[List["prisma.types.DataUnitWhereInput"]] = None,
+        include_label_row: bool = False,
     ) -> List["prisma.models.DataUnit"]:
         pass
 

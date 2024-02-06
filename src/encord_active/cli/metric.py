@@ -20,10 +20,21 @@ SIMPLE_HEAD_BOX = box.Box("    \n    \n -  \n    \n    \n    \n    \n    \n")
 @ensure_project()
 def add_metrics(
     module_path: Path = typer.Argument(
-        ..., help="Path to the python module where the metric resides.", exists=True, dir_okay=False
+        ...,
+        help="Path to the python module where the metric resides.",
+        exists=True,
+        dir_okay=False,
     ),
-    metric_title: Optional[list[str]] = typer.Argument(None, help="Title of the metric. Can be used multiple times."),
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    metric_title: Optional[list[str]] = typer.Argument(
+        None, help="Title of the metric. Can be used multiple times."
+    ),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
 ):
     """
     Add metrics to the project.
@@ -55,7 +66,9 @@ def add_metrics(
         # faster extraction of selected metrics from the module
         found_metrics = get_metrics(list(metric_titles.items()))
     if found_metrics is None:
-        rich.print("[red]Error: Provided module path doesn't comply with expected format. Check the logs.[/red]")
+        rich.print(
+            "[red]Error: Provided module path doesn't comply with expected format. Check the logs.[/red]"
+        )
         raise typer.Abort()
 
     found_metric_titles = {metric.metadata.title: metric for metric in found_metrics}
@@ -69,7 +82,9 @@ def add_metrics(
             if title in metrics_meta:
                 old_module_path = metrics_meta[title]["location"]
                 if full_module_path == Path(old_module_path).expanduser().resolve():
-                    rich.print(f"Requirement already satisfied: {title} in '{module_path.as_posix()}'.")
+                    rich.print(
+                        f"Requirement already satisfied: {title} in '{module_path.as_posix()}'."
+                    )
                 else:
                     rich.print(
                         f"[red]ERROR: Conflict found in metric {title}. "
@@ -79,7 +94,9 @@ def add_metrics(
                     has_conflicts = True
             else:
                 # attach input metric to the project and recreate its metadata in metrics_meta.json
-                metrics_meta[title] = get_metric_metadata(found_metric_titles[title], module_path)
+                metrics_meta[title] = get_metric_metadata(
+                    found_metric_titles[title], module_path
+                )
                 rich.print(f"Adding {title}")
         else:
             # input metric title was not found in the python module
@@ -89,7 +106,9 @@ def add_metrics(
     # update metric dependencies in metrics_meta.json
     update_metrics_meta(project_file_structure, metrics_meta)
     if has_conflicts:
-        rich.print("[yellow]Errors were found. Not all metrics were successfully added.[/yellow]")
+        rich.print(
+            "[yellow]Errors were found. Not all metrics were successfully added.[/yellow]"
+        )
     else:
         rich.print("[green]Successfully added all metrics.[/green]")
 
@@ -97,7 +116,13 @@ def add_metrics(
 @metric_cli.command(name="list", short_help="List metrics.")
 @ensure_project()
 def list_metrics(
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
 ):
     """
     List metrics in the project, including editables.
@@ -118,8 +143,16 @@ def list_metrics(
 @metric_cli.command(name="remove", short_help="Remove metrics.")
 @ensure_project()
 def remove_metrics(
-    metric_title: list[str] = typer.Argument(..., help="Title of the metric. Can be used multiple times."),
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    metric_title: list[str] = typer.Argument(
+        ..., help="Title of the metric. Can be used multiple times."
+    ),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
 ):
     """Remove metrics from the project."""
     project_file_structure = ProjectFileStructure(target)
@@ -136,7 +169,9 @@ def remove_metrics(
                 metrics_meta.pop(title)
                 rich.print(f"Successfully removed {title}")
         else:
-            rich.print(f"[yellow]WARNING: Skipping {title} as it is not attached to the project.[/yellow]")
+            rich.print(
+                f"[yellow]WARNING: Skipping {title} as it is not attached to the project.[/yellow]"
+            )
 
     # update metric dependencies in metrics_meta.json
     update_metrics_meta(project_file_structure, metrics_meta)
@@ -145,11 +180,20 @@ def remove_metrics(
 @metric_cli.command(name="run", short_help="Run metrics.")
 @ensure_project()
 def run_metrics(
-    metric_title: Optional[list[str]] = typer.Argument(None, help="Title of the metric. Can be used multiple times."),
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    metric_title: Optional[list[str]] = typer.Argument(
+        None, help="Title of the metric. Can be used multiple times."
+    ),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
     run_all: bool = typer.Option(False, "--all", help="Run all metrics."),
     fuzzy: bool = typer.Option(
-        False, help="Enable fuzzy search in the selection. (press [TAB] or [SPACE] to select more than one) 🪄"
+        False,
+        help="Enable fuzzy search in the selection. (press [TAB] or [SPACE] to select more than one) 🪄",
     ),
 ):
     """Run metrics on project data and labels."""
@@ -161,14 +205,18 @@ def run_metrics(
 
     project_file_structure = ProjectFileStructure(target)
     metrics_meta = fetch_metrics_meta(project_file_structure)
-    metrics = get_metrics([(m_title, m_meta["location"]) for m_title, m_meta in metrics_meta.items()])
+    metrics = get_metrics(
+        [(m_title, m_meta["location"]) for m_title, m_meta in metrics_meta.items()]
+    )
     if run_all:  # User chooses to run all available metrics
         selected_metrics = metrics
 
     # (interactive) User chooses some metrics via CLI prompt selection
     elif not metric_title:
         choices = list(map(lambda m: Choice(m, name=m.metadata.title), metrics))
-        Options = TypedDict("Options", {"message": str, "choices": list[Choice], "vi_mode": bool})
+        Options = TypedDict(
+            "Options", {"message": str, "choices": list[Choice], "vi_mode": bool}
+        )
         options: Options = {
             "message": "What metrics would you like to run?\n> Press [TAB] or [SPACE] to select more than one.",
             "choices": choices,
@@ -187,12 +235,16 @@ def run_metrics(
         selected_metrics = []
         unknown_metric_titles = []
         for title in metric_title:
-            if title in used_metric_titles:  # ignore repeated metric titles in the CLI argument
+            if (
+                title in used_metric_titles
+            ):  # ignore repeated metric titles in the CLI argument
                 continue
             used_metric_titles.add(title)
 
             metric_cls = metric_title_to_cls.get(title, None)
-            if metric_cls is None:  # unknown and/or wrong metric title in user selection
+            if (
+                metric_cls is None
+            ):  # unknown and/or wrong metric title in user selection
                 unknown_metric_titles.append(title)
             else:
                 selected_metrics.append(metric_cls)
@@ -210,14 +262,24 @@ def run_metrics(
             build_merged_metrics,
         )
 
-        MergedMetrics(conn).replace_all(build_merged_metrics(project_file_structure.metrics))
+        MergedMetrics(conn).replace_all(
+            build_merged_metrics(project_file_structure.metrics)
+        )
 
 
 @metric_cli.command(name="show", short_help="Show information about available metrics.")
 @ensure_project()
 def show_metrics(
-    metric_title: list[str] = typer.Argument(..., help="Title of the metric. Can be used multiple times."),
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    metric_title: list[str] = typer.Argument(
+        ..., help="Title of the metric. Can be used multiple times."
+    ),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
 ):
     """Show information about one or more available metrics in the project."""
 
@@ -225,7 +287,9 @@ def show_metrics(
 
     not_found_metrics = [title for title in metric_title if title not in metrics_meta]
     if len(not_found_metrics) > 0:
-        rich.print("[yellow]WARNING: Package(s) not found:", ", ".join(not_found_metrics))
+        rich.print(
+            "[yellow]WARNING: Package(s) not found:", ", ".join(not_found_metrics)
+        )
 
     first = True
     hidden_properties = {"stats", "long_description"}

@@ -69,7 +69,9 @@ Don't know this? Please see our documentation on the topic to get more help.
         ssh_key_path: Path = Path(ssh_key_path_str).expanduser().absolute()
 
         if not ssh_key_path.exists():
-            rich.print(f"[red]The provided path `{ssh_key_path}` does not seem to be correct.")
+            rich.print(
+                f"[red]The provided path `{ssh_key_path}` does not seem to be correct."
+            )
             raise typer.Abort()
 
         self.contents[ConfigProperties.SSH_KEY_PATH.value] = ssh_key_path.as_posix()

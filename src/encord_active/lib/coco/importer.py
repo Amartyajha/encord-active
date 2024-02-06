@@ -46,7 +46,10 @@ class CocoCategoryInfo:
 
 
 def upload_img(
-    dataset_tmp: LocalDataset, coco_image: CocoImage, image_path: Path, temp_folder: Path
+    dataset_tmp: LocalDataset,
+    coco_image: CocoImage,
+    image_path: Path,
+    temp_folder: Path,
 ) -> Optional[LocalDataRow]:
     file_path = image_path / coco_image.file_name
 
@@ -64,7 +67,8 @@ def upload_img(
     except Exception:
         return None
     img_exif = img.getexif()
-    if img_exif and (274 in img_exif):  # 274 corresponds to orientation key for EXIF metadata
+    # 274 corresponds to orientation key for EXIF metadata
+    if img_exif and (274 in img_exif):
         temp_file_name = file_path.name
         img = ImageOps.exif_transpose(img)
         img.save(temp_folder / temp_file_name)
@@ -90,11 +94,17 @@ def upload_img(
             return None
 
 
-def crop_box_to_image_size(x, y, w, h, img_w: int, img_h: int) -> Tuple[int, int, int, int]:
+def crop_box_to_image_size(
+    x, y, w, h, img_w: int, img_h: int
+) -> Tuple[int, int, int, int]:
     if x > img_w:
-        raise ValueError(f"x coordinate {x} of bounding box outside the image of width {img_w}")
+        raise ValueError(
+            f"x coordinate {x} of bounding box outside the image of width {img_w}"
+        )
     if y > img_h:
-        raise ValueError(f"y coordinate {y} of bounding box outside the image of height {img_h}.")
+        raise ValueError(
+            f"y coordinate {y} of bounding box outside the image of height {img_h}."
+        )
     if x < 0:
         w += x
         x = 0
@@ -132,22 +142,35 @@ def import_annotations(
         if annot.segmentation:
             obj = id_shape_to_obj[(annot.category_id, Shape.POLYGON)]
             polygon = annot.segmentation
-            polygon_points = [Point(polygon[i] / img_w, polygon[i + 1] / img_h) for i in range(0, len(polygon), 2)]
-            objects.append(make_object_dict(ontology_object=obj, object_data=polygon_points))
+            polygon_points = [
+                Point(polygon[i] / img_w, polygon[i + 1] / img_h)
+                for i in range(0, len(polygon), 2)
+            ]
+            objects.append(
+                make_object_dict(ontology_object=obj, object_data=polygon_points)
+            )
         elif len(annot.bbox or []) == 4:
             try:
-                x, y, w, h = crop_box_to_image_size(*annot.bbox, img_w=img_w, img_h=img_h)
+                x, y, w, h = crop_box_to_image_size(
+                    *annot.bbox, img_w=img_w, img_h=img_h
+                )
             except ValueError as e:
-                logger.warning(f"<magenta>Skipping annotation with id {annot.id_}</magenta> {str(e)}")
+                logger.warning(
+                    f"<magenta>Skipping annotation with id {annot.id_}</magenta> {str(e)}"
+                )
                 continue
 
             use_rotation = category_shapes[annot.category_id].has_rotation
             shape = Shape.ROTATABLE_BOUNDING_BOX if use_rotation else Shape.BOUNDING_BOX
             obj = id_shape_to_obj[(annot.category_id, shape)]
-            bounding_box = BoundingBox(x=x / img_w, y=y / img_h, w=w / img_w, h=h / img_h)
+            bounding_box = BoundingBox(
+                x=x / img_w, y=y / img_h, w=w / img_w, h=h / img_h
+            )
             if use_rotation:
                 bounding_box.theta = annot.rotation or 0.0
-            objects.append(make_object_dict(ontology_object=obj, object_data=bounding_box.dict()))
+            objects.append(
+                make_object_dict(ontology_object=obj, object_data=bounding_box.dict())
+            )
 
     lr["data_units"][data_hash]["labels"] = {"objects": objects, "classifications": []}
     updated_lr = label_utilities.construct_answer_dictionaries(lr)
@@ -158,7 +181,11 @@ def import_annotations(
 
 class CocoImporter:
     def __init__(
-        self, images_dir_path: Path, annotations_file_path: Path, destination_dir: Path, use_symlinks: bool = False
+        self,
+        images_dir_path: Path,
+        annotations_file_path: Path,
+        destination_dir: Path,
+        use_symlinks: bool = False,
     ):
         """
         Importer for COCO datasets.
@@ -175,11 +202,17 @@ class CocoImporter:
         self.data_hash_to_image_id: dict[str, int] = {}
 
         if not self.images_dir.is_dir():
-            raise NotADirectoryError(f"Images directory '{self.images_dir}' doesn't exist")
+            raise NotADirectoryError(
+                f"Images directory '{self.images_dir}' doesn't exist"
+            )
         if not self.annotations_file_path.is_file():
-            raise FileNotFoundError(f"Annotation file '{self.annotations_file_path}' doesn't exist")
+            raise FileNotFoundError(
+                f"Annotation file '{self.annotations_file_path}' doesn't exist"
+            )
 
-        annotations_file = json.loads(self.annotations_file_path.read_text(encoding="utf-8"))
+        annotations_file = json.loads(
+            self.annotations_file_path.read_text(encoding="utf-8")
+        )
         self.info = parse_info(annotations_file["info"])
         self.categories = parse_categories(annotations_file["categories"])
         self.images = parse_images(annotations_file["images"])
@@ -197,7 +230,9 @@ class CocoImporter:
 
     def create_dataset(self, temp_folder: Path) -> LocalDataset:
         print(f"Creating a new dataset: {self.title}")
-        dataset: LocalDataset = self.user_client.create_dataset(self.title, use_symlinks=self.use_symlinks)
+        dataset: LocalDataset = self.user_client.create_dataset(
+            self.title, use_symlinks=self.use_symlinks
+        )
 
         for image_id, coco_image in tqdm(self.images.items(), desc="Storing images"):
             data_row = upload_img(dataset, coco_image, self.images_dir, temp_folder)
@@ -209,7 +244,9 @@ class CocoImporter:
         print(f"Creating a new ontology: {self.title}")
         ontology_structure = OntologyStructure()
         # NOTE: create both polygon and bbox ontology objects when there is no way to infer the shape
-        default_category_info = CocoCategoryInfo(shapes={Shape.POLYGON, Shape.BOUNDING_BOX})
+        default_category_info = CocoCategoryInfo(
+            shapes={Shape.POLYGON, Shape.BOUNDING_BOX}
+        )
         for cat in self.categories:
             category_info = self.category_shapes.get(cat.id_, default_category_info)
             shapes = category_info.shapes
@@ -229,7 +266,10 @@ class CocoImporter:
         return ontology
 
     def create_project(
-        self, dataset: LocalDataset, ontology: LocalOntology, ssh_key_path: Optional[Path]
+        self,
+        dataset: LocalDataset,
+        ontology: LocalOntology,
+        ssh_key_path: Optional[Path],
     ) -> LocalProject:
         print(f"Creating a new project: {self.title}")
         project = self.user_client.create_project(
@@ -253,7 +293,9 @@ class CocoImporter:
         }
         if ssh_key_path:
             project_meta["ssh_key_path"] = ssh_key_path.as_posix()
-        project_file_structure.project_meta.write_text(yaml.dump(project_meta), encoding="utf-8")
+        project_file_structure.project_meta.write_text(
+            yaml.dump(project_meta), encoding="utf-8"
+        )
 
         # attach builtin metrics to the project
         metrics_meta = fill_metrics_meta_with_builtin_metrics()
@@ -262,28 +304,48 @@ class CocoImporter:
         id_to_obj = {obj.uid: obj for obj in ontology.structure.objects}
         id_shape_to_obj = {key: id_to_obj[id] for key, id in self.id_mappings.items()}
 
-        label_row_meta = {lr.label_hash: handle_enum_and_datetime(lr) for lr in project.label_row_meta}
-        project_file_structure.label_row_meta.write_text(json.dumps(label_row_meta, indent=2), encoding="utf-8")
+        label_row_meta = {
+            lr.label_hash: handle_enum_and_datetime(lr) for lr in project.label_row_meta
+        }
+        project_file_structure.label_row_meta.write_text(
+            json.dumps(label_row_meta, indent=2), encoding="utf-8"
+        )
 
         image_to_du = {}
 
         for data_unit in tqdm(dataset.data_rows, desc="Importing annotations"):
-            data_hash = import_annotations(project, self.annotations, data_unit, id_shape_to_obj, self.category_shapes)
+            data_hash = import_annotations(
+                project,
+                self.annotations,
+                data_unit,
+                id_shape_to_obj,
+                self.category_shapes,
+            )
             image_id = self.data_hash_to_image_id[data_hash]
             image = self.images[str(image_id)]
-            image_to_du[image_id] = {"data_hash": data_hash, "height": image.height, "width": image.width}
+            image_to_du[image_id] = {
+                "data_hash": data_hash,
+                "height": image.height,
+                "width": image.width,
+            }
 
         project_file_structure.image_data_unit.write_text(json.dumps(image_to_du))
 
         return project
 
 
-def _infer_category_shapes(annotations: Dict[int, List[CocoAnnotation]]) -> Dict[int, CocoCategoryInfo]:
+def _infer_category_shapes(
+    annotations: Dict[int, List[CocoAnnotation]]
+) -> Dict[int, CocoCategoryInfo]:
     category_shapes: Dict[int, CocoCategoryInfo] = {}
-    flat_annotations = [annotation for annotations in annotations.values() for annotation in annotations]
+    flat_annotations = [
+        annotation for annotations in annotations.values() for annotation in annotations
+    ]
 
     for annotation in flat_annotations:
-        category_info = category_shapes.setdefault(annotation.category_id, CocoCategoryInfo())
+        category_info = category_shapes.setdefault(
+            annotation.category_id, CocoCategoryInfo()
+        )
         if annotation.segmentation:
             category_info.shapes.add(Shape.POLYGON)
         if len(annotation.bbox or []) == 4:
@@ -291,7 +353,10 @@ def _infer_category_shapes(annotations: Dict[int, List[CocoAnnotation]]) -> Dict
         category_info.has_rotation |= bool(annotation.rotation)
 
     for category_info in category_shapes.values():
-        if not category_info.has_rotation and Shape.ROTATABLE_BOUNDING_BOX in category_info.shapes:
+        if (
+            not category_info.has_rotation
+            and Shape.ROTATABLE_BOUNDING_BOX in category_info.shapes
+        ):
             category_info.shapes.remove(Shape.ROTATABLE_BOUNDING_BOX)
             category_info.shapes.add(Shape.BOUNDING_BOX)
 

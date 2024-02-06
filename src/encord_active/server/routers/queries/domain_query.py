@@ -20,11 +20,23 @@ from encord_active.db.models import (
     ProjectTaggedDataUnit,
 )
 
-AnalyticsTable = Type[Union[ProjectDataAnalytics, ProjectAnnotationAnalytics, ProjectPredictionAnalytics]]
-ReductionTable = Type[
-    Union[ProjectDataAnalyticsReduced, ProjectAnnotationAnalyticsReduced, ProjectPredictionAnalyticsReduced]
+AnalyticsTable = Type[
+    Union[ProjectDataAnalytics, ProjectAnnotationAnalytics, ProjectPredictionAnalytics]
 ]
-MetadataTable = Type[Union[ProjectDataAnalyticsExtra, ProjectAnnotationAnalyticsExtra, ProjectPredictionAnalyticsExtra]]
+ReductionTable = Type[
+    Union[
+        ProjectDataAnalyticsReduced,
+        ProjectAnnotationAnalyticsReduced,
+        ProjectPredictionAnalyticsReduced,
+    ]
+]
+MetadataTable = Type[
+    Union[
+        ProjectDataAnalyticsExtra,
+        ProjectAnnotationAnalyticsExtra,
+        ProjectPredictionAnalyticsExtra,
+    ]
+]
 TagTable = Type[Union[ProjectTaggedDataUnit, ProjectTaggedAnnotation]]
 TableJoinLiterals = List[Literal["du_hash", "frame", "object_hash"]]
 

@@ -38,19 +38,25 @@ class Metadata(TypedDict):
 
 
 @cached(cache=LRUCache(maxsize=100))
-def load_project_metrics(project: ProjectFileStructure, scope: Optional[MetricScope] = None) -> List[MetricData]:
+def load_project_metrics(
+    project: ProjectFileStructure, scope: Optional[MetricScope] = None
+) -> List[MetricData]:
     if scope == MetricScope.PREDICTION:
         return load_available_metrics(project.predictions / "object" / "metrics")
     return load_available_metrics(project.metrics, scope)
 
 
 @cached(cache=LRUCache(maxsize=100))
-def get_similarity_finder(embedding_type: EmbeddingType, project: ProjectFileStructureDep):
+def get_similarity_finder(
+    embedding_type: EmbeddingType, project: ProjectFileStructureDep
+):
     return SimilaritiesFinder(embedding_type, project)
 
 
 @cached(cache=LRUCache(maxsize=5))
-def filtered_merged_metrics(project: ProjectFileStructure, filters: Filters, scope: Optional[MetricScope] = None):
+def filtered_merged_metrics(
+    project: ProjectFileStructure, filters: Filters, scope: Optional[MetricScope] = None
+):
     with DBConnection(project) as conn:
         merged_metrics = MergedMetrics(conn).all()
 
@@ -63,17 +69,22 @@ def read_class_idx(predictions_dir: Path):
 
 
 def _get_url(
-    project_hash: uuid.UUID, label_row_structure: LabelRowStructure, du_hash: str, frame: str
+    project_hash: uuid.UUID,
+    label_row_structure: LabelRowStructure,
+    du_hash: str,
+    frame: str,
 ) -> Optional[Tuple[str, Optional[float]]]:
-    data_opt = next(label_row_structure.iter_data_unit(du_hash, int(frame)), None) or next(
-        label_row_structure.iter_data_unit(du_hash, None), None
-    )
+    data_opt = next(
+        label_row_structure.iter_data_unit(du_hash, int(frame)), None
+    ) or next(label_row_structure.iter_data_unit(du_hash, None), None)
     if data_opt:
         timestamp = None
         if data_opt.data_type == "video":
             timestamp = (float(int(frame)) + 0.5) / data_opt.frames_per_second
         signed_url = data_opt.signed_url
-        file_path = url_to_file_path(signed_url, label_row_structure.project.project_dir)
+        file_path = url_to_file_path(
+            signed_url, label_row_structure.project.project_dir
+        )
         if file_path is not None:
             url_frame = 0 if data_opt.data_type == "video" else frame
             signed_url = f"/projects/{project_hash}/local-fs/{label_row_structure.label_hash}/{du_hash}/{url_frame}"
@@ -110,7 +121,8 @@ def _transform_object(object_: dict, img_w: int, img_h: int) -> Optional[dict]:
             rotated_polygon = rotate(Polygon(no_rotate_points), b["theta"])
             if rotated_polygon.exterior:
                 points = {
-                    i: {"x": c[0] / img_w, "y": c[1] / img_h} for i, c in enumerate(rotated_polygon.exterior.coords)
+                    i: {"x": c[0] / img_w, "y": c[1] / img_h}
+                    for i, c in enumerate(rotated_polygon.exterior.coords)
                 }
         elif shape == ObjectShape.KEY_POINT:
             points = object_.pop("point")
@@ -136,7 +148,9 @@ def to_item(
     project_meta = project_file_structure.load_project_meta()
     if project_meta.get("has_remote", False):
         project_hash = project_meta["project_hash"]
-        edit_url = f"https://app.encord.com/label_editor/{du_hash}&{project_hash}/{frame}"
+        edit_url = (
+            f"https://app.encord.com/label_editor/{du_hash}&{project_hash}/{frame}"
+        )
 
     tags = row.pop("tags", GroupedTags(data=[], label=[]))
     identifier = row.pop("identifier")
@@ -147,7 +161,9 @@ def to_item(
     )
 
     label_row_structure = project_file_structure.label_row_structure(lr_hash)
-    url = _get_url(uuid.UUID(project_meta["project_hash"]), label_row_structure, du_hash, frame)
+    url = _get_url(
+        uuid.UUID(project_meta["project_hash"]), label_row_structure, du_hash, frame
+    )
 
     label_row = label_row_structure.label_row_json
     du = label_row["data_units"][du_hash]
@@ -161,7 +177,13 @@ def to_item(
 
     if labels is not None:
         labels["objects"] = list(
-            filter(None, map(partial(_transform_object, img_w=img_w, img_h=img_h), labels.get("objects", [])))
+            filter(
+                None,
+                map(
+                    partial(_transform_object, img_w=img_w, img_h=img_h),
+                    labels.get("objects", []),
+                ),
+            )
         )
 
         try:
@@ -171,8 +193,12 @@ def to_item(
                 question = clf_instance["name"]
                 if question == metadata["labelClass"]:
                     clf_hash = clf_instance["classificationHash"]
-                    classification = label_row["classification_answers"][clf_hash]["classifications"][0]
-                    metadata["labelClass"] = f"{question}: {classification['answers'][0]['name']}"
+                    classification = label_row["classification_answers"][clf_hash][
+                        "classifications"
+                    ][0]
+                    metadata[
+                        "labelClass"
+                    ] = f"{question}: {classification['answers'][0]['name']}"
         except:
             pass
 
@@ -184,7 +210,9 @@ def to_item(
                 row, project_file_structure, metadata, img_w, img_h, object_hash
             )
         else:
-            classification_predictions = build_item_classification_predictions(row, project_file_structure, metadata)
+            classification_predictions = build_item_classification_predictions(
+                row, project_file_structure, metadata
+            )
 
     return {
         "id": identifier,
@@ -195,7 +223,10 @@ def to_item(
         "metadata": metadata,
         "tags": tags,
         "labels": labels or {"objects": [], "classifications": []},
-        "predictions": {"objects": object_predictions, "classifications": classification_predictions},
+        "predictions": {
+            "objects": object_predictions,
+            "classifications": classification_predictions,
+        },
     }
 
 
@@ -223,7 +254,9 @@ def build_item_object_predictions(
         x, y, w, h = bbox
         if polygon is None:
             return []
-        prediction_points = {i: {"x": x / img_w, "y": y / img_h} for i, (x, y) in enumerate(polygon)}
+        prediction_points = {
+            i: {"x": x / img_w, "y": y / img_h} for i, (x, y) in enumerate(polygon)
+        }
     else:
         x1, x2, y1, y2 = row["x1"], row["x2"], row["y1"], row["y2"]
         x, y = x1, y1
@@ -251,7 +284,9 @@ def build_item_object_predictions(
 
     is_true_positive = row["is_true_positive"]
 
-    class_idx = read_class_idx(project_file_structure.predictions / MainPredictionType.OBJECT.value)
+    class_idx = read_class_idx(
+        project_file_structure.predictions / MainPredictionType.OBJECT.value
+    )
     class_name = row.get("class_name", None)
 
     metadata["annotator"] = "Prediction"
@@ -289,11 +324,15 @@ def build_item_classification_predictions(
 
     row["Ground Truth Class"] = row.pop("gt_class_name", None)
 
-    class_idx = read_class_idx(project_file_structure.predictions / MainPredictionType.CLASSIFICATION.value)
+    class_idx = read_class_idx(
+        project_file_structure.predictions / MainPredictionType.CLASSIFICATION.value
+    )
     class_name = row.pop("class_name", None)
 
     is_true_positive = row.pop("is_true_positive")
-    metadata["annotator"] = "Correct Classifictaion" if is_true_positive else "Misclassification"
+    metadata["annotator"] = (
+        "Correct Classifictaion" if is_true_positive else "Misclassification"
+    )
     metadata["labelClass"] = class_name
 
     classifications.append(

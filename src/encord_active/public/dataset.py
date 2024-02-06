@@ -44,10 +44,16 @@ class ActiveDataset(Dataset):
     ):
         database_path = database_path.expanduser().resolve()
         if not database_path.is_file():
-            raise FileNotFoundError(f"The database file does not exist at the specified path: '{database_path}'")
+            raise FileNotFoundError(
+                f"The database file does not exist at the specified path: '{database_path}'"
+            )
         self.root_path = database_path.parent
         self.engine = get_engine(database_path, use_alembic=False)
-        self.project_hash = {UUID(project_hash)} if isinstance(project_hash, str) else set(map(UUID, project_hash))
+        self.project_hash = (
+            {UUID(project_hash)}
+            if isinstance(project_hash, str)
+            else set(map(UUID, project_hash))
+        )
         self.tag_name = {tag_name} if isinstance(tag_name, str) else tag_name
         self.ontology_hashes = ontology_hashes
 
@@ -70,7 +76,12 @@ class ActiveDataset(Dataset):
                     in_names.add(name)
 
             where_clauses = [
-                in_op(col, vals) for col, vals in [(ProjectTag.tag_hash, in_uids), (ProjectTag.name, in_names)] if vals
+                in_op(col, vals)
+                for col, vals in [
+                    (ProjectTag.tag_hash, in_uids),
+                    (ProjectTag.name, in_names),
+                ]
+                if vals
             ]
             tag_query = select(ProjectTag.tag_hash).where(
                 in_op(ProjectTag.project_hash, self.project_hash), *where_clauses
@@ -79,7 +90,9 @@ class ActiveDataset(Dataset):
 
             if tag_hash is None:
                 valid_tag_names = sess.exec(
-                    select(ProjectTag.name).where(in_op(ProjectTag.project_hash, self.project_hash))
+                    select(ProjectTag.name).where(
+                        in_op(ProjectTag.project_hash, self.project_hash)
+                    )
                 ).all()
                 raise ValueError(
                     f"Couldn't find a data tag with either name or tag_hash `{self.tag_name}`. Valid tags for the specified project(s) are {valid_tag_names}."
@@ -93,7 +106,9 @@ class ActiveDataset(Dataset):
                 in_op(T.tag_hash, tag_hash),
             )
         else:
-            identifier_query = identifier_query.where(in_op(D.project_hash, self.project_hash))
+            identifier_query = identifier_query.where(
+                in_op(D.project_hash, self.project_hash)
+            )
 
         return identifier_query
 
@@ -105,21 +120,34 @@ class ActiveDataset(Dataset):
             if (
                 probe is not None
                 and probe[-1] is not None
-                and url_to_file_path(probe[-1], self.root_path) is None  # type: ignore
+                # type: ignore
+                and url_to_file_path(probe[-1], self.root_path) is None
             ):
-                raise ValueError("Couldn't find data locally. Please execute `encord-active download-data` first.")
+                raise ValueError(
+                    "Couldn't find data locally. Please execute `encord-active download-data` first."
+                )
 
             # Check for videos
-            video_probe = sess.exec(identifier_query.where(D.data_uri_is_video).limit(1)).first()
+            video_probe = sess.exec(
+                identifier_query.where(D.data_uri_is_video).limit(1)
+            ).first()
             if video_probe is not None:
-                raise ValueError("Dataset contains videos. This is currently not supported for this dataloader.")
+                raise ValueError(
+                    "Dataset contains videos. This is currently not supported for this dataloader."
+                )
 
             # Load and validate ontology
             if len(self.project_hash) > 1:
-                ontologies = list(map(OntologyStructure.from_dict, sess.exec(select(P.project_ontology)).all()))  # type: ignore
+                ontologies = list(
+                    map(
+                        OntologyStructure.from_dict,
+                        sess.exec(select(P.project_ontology)).all(),
+                    )
+                )  # type: ignore
                 first, *rest = [
                     tuple(
-                        [o.feature_node_hash for o in ont.objects] + [c.feature_node_hash for c in ont.classifications]
+                        [o.feature_node_hash for o in ont.objects]
+                        + [c.feature_node_hash for c in ont.classifications]
                     )
                     for ont in ontologies
                 ]
@@ -128,7 +156,9 @@ class ActiveDataset(Dataset):
                 ), "Ontologies must match if you select multiple projects at once"
 
             ontology_dict = sess.exec(
-                select(P.project_ontology).where(in_op(P.project_hash, self.project_hash)).limit(1)
+                select(P.project_ontology)
+                .where(in_op(P.project_hash, self.project_hash))
+                .limit(1)
             ).first()
             if ontology_dict is None:
                 raise ValueError("Couldn't read project ontology")
@@ -201,10 +231,12 @@ class ActiveClassificationDataset(ActiveDataset):
 
         with Session(self.engine) as sess:
             identifier_query = self.get_identifier_query(sess)
-            identifier_query = identifier_query.join(L, onclause=(L.data_hash == D.data_hash)).where(
-                in_op(L.project_hash, self.project_hash)
+            identifier_query = identifier_query.join(
+                L, onclause=(L.data_hash == D.data_hash)
+            ).where(in_op(L.project_hash, self.project_hash))
+            identifier_query = identifier_query.add_columns(
+                D.data_uri, D.classifications, L.label_row_json
             )
-            identifier_query = identifier_query.add_columns(D.data_uri, D.classifications, L.label_row_json)
 
             self.identifiers = sess.exec(identifier_query).all()
             ontology_pairs = [
@@ -212,12 +244,19 @@ class ActiveClassificationDataset(ActiveDataset):
                 for c in self.ontology.classifications
                 for a in c.attributes
                 if isinstance(a, RadioAttribute)
-                and ((not self.ontology_hashes) or c.feature_node_hash in self.ontology_hashes)
+                and (
+                    (not self.ontology_hashes)
+                    or c.feature_node_hash in self.ontology_hashes
+                )
             ]
             if len(ontology_pairs) == 0:
-                raise ValueError("No ontology classifications were found to use for labels")
+                raise ValueError(
+                    "No ontology classifications were found to use for labels"
+                )
             self.classification, self.attribute = ontology_pairs[0]
-            self.option_indices = {o.feature_node_hash: i for i, o in enumerate(self.attribute.options)}
+            self.option_indices = {
+                o.feature_node_hash: i for i, o in enumerate(self.attribute.options)
+            }
             self._inv_option_indices = {v: k for k, v in self.option_indices.items()}
             self.class_names = [o.title for o in self.attribute.options]
 
@@ -232,21 +271,35 @@ class ActiveClassificationDataset(ActiveDataset):
                 classification_answers = label_row_json["classification_answers"]
 
                 clf_instance = next(
-                    (c for c in classifications if c["featureHash"] == self.classification.feature_node_hash),
+                    (
+                        c
+                        for c in classifications
+                        if c["featureHash"] == self.classification.feature_node_hash
+                    ),
                     None,
                 )
                 if clf_instance is None:
                     continue
                 clf_hash = clf_instance["classificationHash"]
-                clf_classifications = classification_answers[clf_hash]["classifications"]
+                clf_classifications = classification_answers[clf_hash][
+                    "classifications"
+                ]
                 clf_answers = next(
-                    (a for a in clf_classifications if a["featureHash"] == self.attribute.feature_node_hash),
+                    (
+                        a
+                        for a in clf_classifications
+                        if a["featureHash"] == self.attribute.feature_node_hash
+                    ),
                     None,
                 )
                 if clf_answers is None:
                     continue
                 clf_opt = next(
-                    (o for o in clf_answers["answers"] if o["featureHash"] in self.option_indices),
+                    (
+                        o
+                        for o in clf_answers["answers"]
+                        if o["featureHash"] in self.option_indices
+                    ),
                     None,
                 )
                 if clf_opt is None:
@@ -259,7 +312,9 @@ class ActiveClassificationDataset(ActiveDataset):
         fh = self.classification.feature_node_hash
         ah = self.attribute.feature_node_hash
         return FrameClassification(
-            feature_hash=fh, attribute_hash=ah, option_hash=self._inv_option_indices[label_index]
+            feature_hash=fh,
+            attribute_hash=ah,
+            option_hash=self._inv_option_indices[label_index],
         )
 
     def __getitem__(self, idx):
@@ -335,33 +390,52 @@ class ActiveObjectDataset(ActiveDataset):
 
         with Session(self.engine) as sess:
             identifier_query = self.get_identifier_query(sess)
-            identifier_query = identifier_query.join(L, onclause=(L.data_hash == D.data_hash)).where(
-                in_op(L.project_hash, self.project_hash)
+            identifier_query = identifier_query.join(
+                L, onclause=(L.data_hash == D.data_hash)
+            ).where(in_op(L.project_hash, self.project_hash))
+            identifier_query = identifier_query.add_columns(
+                D.data_uri, D.objects, L.label_row_json
             )
-            identifier_query = identifier_query.add_columns(D.data_uri, D.objects, L.label_row_json)
             self.identifiers = sess.exec(identifier_query).all()
 
             feature_hash_to_ontology_object: dict[str, Object] = {
                 o.feature_node_hash: o
                 for o in self.ontology.objects
-                if (self.ontology_hashes is None or (o.feature_node_hash in self.ontology_hashes))
+                if (
+                    self.ontology_hashes is None
+                    or (o.feature_node_hash in self.ontology_hashes)
+                )
             }
 
-            if self.ontology_hashes is not None and len(feature_hash_to_ontology_object) != len(self.ontology_hashes):
-                missing_feature_hashes = set(self.ontology_hashes).difference(set(feature_hash_to_ontology_object))
+            if self.ontology_hashes is not None and len(
+                feature_hash_to_ontology_object
+            ) != len(self.ontology_hashes):
+                missing_feature_hashes = set(self.ontology_hashes).difference(
+                    set(feature_hash_to_ontology_object)
+                )
                 error_log = []
                 for feature_hash in missing_feature_hashes:
                     ontology_object = feature_hash_to_ontology_object.get(feature_hash)
-                    shape = "UNKNOWN" if ontology_object is None else ontology_object.shape.name
-                    error_log.append(f"{(ontology_object and ontology_object.title) or feature_hash}: {shape}")
+                    shape = (
+                        "UNKNOWN"
+                        if ontology_object is None
+                        else ontology_object.shape.name
+                    )
+                    error_log.append(
+                        f"{(ontology_object and ontology_object.title) or feature_hash}: {shape}"
+                    )
                 raise ValueError(
                     "Mismatch between objects with specified `ontology_hashes` and supported shapes: "
                     + ", ".join(error_log)
                 )
             if len(feature_hash_to_ontology_object) == 0:
-                raise ValueError("No ontology objects with supported shapes were found to use for labels")
+                raise ValueError(
+                    "No ontology objects with supported shapes were found to use for labels"
+                )
 
-            self.class_names = [o.title for o in feature_hash_to_ontology_object.values()]
+            self.class_names = [
+                o.title for o in feature_hash_to_ontology_object.values()
+            ]
 
             self.data_unit_paths: list[Path] = []
             self.labels_per_data_unit: list[list[dict]] = []
@@ -373,10 +447,14 @@ class ActiveObjectDataset(ActiveDataset):
                 label_row_json,
             ) in self.identifiers:
                 object_hash_to_object = {
-                    o["objectHash"]: o for o in all_objects if o["featureHash"] in feature_hash_to_ontology_object
+                    o["objectHash"]: o
+                    for o in all_objects
+                    if o["featureHash"] in feature_hash_to_ontology_object
                 }
                 object_attributes = {
-                    k: v for k, v in label_row_json["object_answers"].items() if k in object_hash_to_object
+                    k: v
+                    for k, v in label_row_json["object_answers"].items()
+                    if k in object_hash_to_object
                 }
 
                 data_unit_path = url_to_file_path(data_uri, self.root_path)
@@ -384,7 +462,8 @@ class ActiveObjectDataset(ActiveDataset):
                     # Skip file as it's missing
                     continue
 
-                self.data_unit_paths.append(data_unit_path)  # TODO check "type: ignore"
+                # TODO check "type: ignore"
+                self.data_unit_paths.append(data_unit_path)
                 self.labels_per_data_unit.append(list(object_hash_to_object.values()))
                 self.label_attributes_per_data_unit.append(object_attributes)
 

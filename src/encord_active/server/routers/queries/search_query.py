@@ -58,12 +58,18 @@ def search_filters(
 ) -> list:
     filters: list = []
     if tables.annotation is None:
-        base_table = tables.data.analytics if base == "analytics" else tables.data.reduction
-        _project_filters(table=base_table, project_filters=project_filters, filters=filters)
+        base_table = (
+            tables.data.analytics if base == "analytics" else tables.data.reduction
+        )
+        _project_filters(
+            table=base_table, project_filters=project_filters, filters=filters
+        )
         # Data only.
         if search is not None:
             if search.annotation is not None:
-                raise ValueError("Annotation queries are not supported in the raw data domain")
+                raise ValueError(
+                    "Annotation queries are not supported in the raw data domain"
+                )
             if search.data is not None:
                 _append_filters(
                     tables=tables.data,
@@ -72,8 +78,14 @@ def search_filters(
                     filters=filters,
                 )
     else:
-        base_table = tables.annotation.analytics if base == "analytics" else tables.annotation.reduction
-        _project_filters(table=base_table, project_filters=project_filters, filters=filters)
+        base_table = (
+            tables.annotation.analytics
+            if base == "analytics"
+            else tables.annotation.reduction
+        )
+        _project_filters(
+            table=base_table, project_filters=project_filters, filters=filters
+        )
         # Data & Annotation
         if search is not None:
             if search.annotation is not None:
@@ -109,7 +121,10 @@ def _project_filters(
 
 
 def _append_filters(
-    tables: DomainTables, search: DomainSearchFilters, base_table: Union[AnalyticsTable, ReductionTable], filters: list
+    tables: DomainTables,
+    search: DomainSearchFilters,
+    base_table: Union[AnalyticsTable, ReductionTable],
+    filters: list,
 ) -> None:
     # Metric filters
     analytics_join = False

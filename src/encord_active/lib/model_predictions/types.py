@@ -40,7 +40,9 @@ class ClassificationPredictionMatchSchema(ClassificationPredictionSchema):
     gt_class_id: Series[padt.Int64] = pa.Field(coerce=True)
 
 
-class ClassificationPredictionMatchSchemaWithClassNames(ClassificationPredictionMatchSchema):
+class ClassificationPredictionMatchSchemaWithClassNames(
+    ClassificationPredictionMatchSchema
+):
     class_name: Series[str] = pa.Field()
     gt_class_name: Series[str] = pa.Field()
 
@@ -87,7 +89,9 @@ class ObjectDetectionOutcomeType(str, Enum):
 
 class PredictionsFilters(BaseModel):
     type: MainPredictionType
-    outcome: Optional[Union[ClassificationOutcomeType, ObjectDetectionOutcomeType]] = None
+    outcome: Optional[
+        Union[ClassificationOutcomeType, ObjectDetectionOutcomeType]
+    ] = None
     iou_threshold: Optional[Annotated[float, Field(ge=0, le=1)]] = None
     ignore_frames_without_predictions: bool = False
 

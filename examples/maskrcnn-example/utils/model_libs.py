@@ -21,7 +21,9 @@ def get_model_instance_segmentation(num_classes, fine_tuning=False, box_nms_thre
     hidden_layer = 256
 
     # and replace the mask predictor with a new one
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask, hidden_layer, num_classes)
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(
+        in_features_mask, hidden_layer, num_classes
+    )
 
     if fine_tuning:
         for param in model.parameters():

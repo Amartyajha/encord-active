@@ -23,7 +23,9 @@ class EmbeddingSearchResult(NamedTuple):
     # [m, k] array
 
 
-def _query_in_batches(index: NNDescent, embeddings: np.ndarray, k: int, batch_size=1000) -> EmbeddingSearchResult:
+def _query_in_batches(
+    index: NNDescent, embeddings: np.ndarray, k: int, batch_size=1000
+) -> EmbeddingSearchResult:
     n = embeddings.shape[0]
     if n <= batch_size:
         return EmbeddingSearchResult(*index.query(embeddings, k=k))
@@ -33,21 +35,33 @@ def _query_in_batches(index: NNDescent, embeddings: np.ndarray, k: int, batch_si
         d, i = index.query(embeddings[idx : idx + batch_size], k=k)
         dists.append(d)
         idxs.append(i)
-    return EmbeddingSearchResult(np.concatenate(dists, axis=0), np.concatenate(idxs, axis=0))
+    return EmbeddingSearchResult(
+        np.concatenate(dists, axis=0), np.concatenate(idxs, axis=0)
+    )
 
 
 class EmbeddingIndex:
     @classmethod
     def index_available(
-        cls, project_file_structure: ProjectFileStructure, embedding_type: EmbeddingType, metric: str = "cosine"
+        cls,
+        project_file_structure: ProjectFileStructure,
+        embedding_type: EmbeddingType,
+        metric: str = "cosine",
     ):
-        return project_file_structure.get_embedding_index_file(embedding_type, metric).is_file()
+        return project_file_structure.get_embedding_index_file(
+            embedding_type, metric
+        ).is_file()
 
     @classmethod
     def remove_index(
-        cls, project_file_structure: ProjectFileStructure, embedding_type: EmbeddingType, metric: str = "cosine"
+        cls,
+        project_file_structure: ProjectFileStructure,
+        embedding_type: EmbeddingType,
+        metric: str = "cosine",
     ):
-        embedding_file = project_file_structure.get_embedding_index_file(embedding_type, metric)
+        embedding_file = project_file_structure.get_embedding_index_file(
+            embedding_type, metric
+        )
         if embedding_file.is_file():
             embedding_file.unlink()
 
@@ -72,7 +86,9 @@ class EmbeddingIndex:
             An index ready for querying
 
         """
-        index_file = project_file_structure.get_embedding_index_file(embedding_type, metric)
+        index_file = project_file_structure.get_embedding_index_file(
+            embedding_type, metric
+        )
 
         if iterator is None:
             iterator = DatasetIterator(cache_dir=project_file_structure.project_dir)
@@ -86,13 +102,17 @@ class EmbeddingIndex:
             assert index_file.is_file()
             idx = pickle.loads(index_file.read_bytes())
         except:
-            np_embeddings = np.stack([e["embedding"] for e in embeddings]).astype(np.float32)
+            np_embeddings = np.stack([e["embedding"] for e in embeddings]).astype(
+                np.float32
+            )
             idx = EmbeddingIndex(np_embeddings, metric=metric)
             idx.prepare()
             index_file.write_bytes(pickle.dumps(idx))
         return idx, embeddings
 
-    def __init__(self, embeddings: np.ndarray, inplace=True, metric: str = "cosine") -> None:
+    def __init__(
+        self, embeddings: np.ndarray, inplace=True, metric: str = "cosine"
+    ) -> None:
         self.n, self.d = embeddings.shape
         self.inplace = inplace
 

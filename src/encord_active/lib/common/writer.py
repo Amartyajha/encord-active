@@ -34,7 +34,9 @@ class StatisticsObserver(MetricObserver):
 
         self.min_value = min(self.min_value, value)
         self.max_value = max(self.max_value, value)
-        self.mean_value = (self.mean_value * self.num_rows + value) / (self.num_rows + 1)
+        self.mean_value = (self.mean_value * self.num_rows + value) / (
+            self.num_rows + 1
+        )
         self.num_rows += 1
 
     def on_metric_close(self):
@@ -98,6 +100,9 @@ class CSVWriter(Writer):
         if labels is not None:
             if isinstance(labels, dict):
                 labels = [labels]
-            hashes = [lbl["objectHash"] if "objectHash" in lbl else lbl["classificationHash"] for lbl in labels]
+            hashes = [
+                lbl["objectHash"] if "objectHash" in lbl else lbl["classificationHash"]
+                for lbl in labels
+            ]
             return "_".join(chain([identifier], hashes))
         return identifier

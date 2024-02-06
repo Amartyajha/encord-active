@@ -55,35 +55,49 @@ def prediction_and_label_filtering_classification(
     # Predictions
     _predictions = predictions.copy()
     _predictions.loc[
-        ~_predictions[ClassificationPredictionSchema.class_id].isin(set(map(int, class_idx.keys()))),
+        ~_predictions[ClassificationPredictionSchema.class_id].isin(
+            set(map(int, class_idx.keys()))
+        ),
         ClassificationPredictionSchema.class_id,
     ] = new_index
 
     # Labels
     _labels = labels.copy()
     _labels.loc[
-        ~_labels[ClassificationLabelSchema.class_id].isin(set(map(int, class_idx.keys()))),
+        ~_labels[ClassificationLabelSchema.class_id].isin(
+            set(map(int, class_idx.keys()))
+        ),
         ClassificationLabelSchema.class_id,
     ] = new_index
 
     name_map = {int(k): v["name"] for k, v in all_class_idx.items()}
     name_map[new_index] = "others"
-    _predictions[ClassificationPredictionSchema.class_id] = _predictions[ClassificationPredictionSchema.class_id].map(
-        name_map
-    )
-    _labels[ClassificationLabelSchema.class_id] = _labels[ClassificationLabelSchema.class_id].map(name_map)
+    _predictions[ClassificationPredictionSchema.class_id] = _predictions[
+        ClassificationPredictionSchema.class_id
+    ].map(name_map)
+    _labels[ClassificationLabelSchema.class_id] = _labels[
+        ClassificationLabelSchema.class_id
+    ].map(name_map)
 
     # matched predictions
     _matched_model_predictions = matched_model_predictions.copy()
     _matched_model_predictions = _matched_model_predictions[
-        _matched_model_predictions[ClassificationPredictionMatchSchema.class_id].isin(set(map(int, class_idx.keys())))
+        _matched_model_predictions[ClassificationPredictionMatchSchema.class_id].isin(
+            set(map(int, class_idx.keys()))
+        )
     ]
     _matched_model_predictions[
         ClassificationPredictionMatchSchemaWithClassNames.class_name
-    ] = _matched_model_predictions[ClassificationPredictionMatchSchema.class_id].map(name_map)
+    ] = _matched_model_predictions[ClassificationPredictionMatchSchema.class_id].map(
+        name_map
+    )
 
     _matched_model_predictions[
         ClassificationPredictionMatchSchemaWithClassNames.gt_class_name
-    ] = _matched_model_predictions[ClassificationPredictionMatchSchema.gt_class_id].map(name_map)
+    ] = _matched_model_predictions[ClassificationPredictionMatchSchema.gt_class_id].map(
+        name_map
+    )
 
-    return _labels, _predictions, _matched_model_predictions.pipe(ClassificationPredictionMatchSchemaWithClassNames)
+    return _labels, _predictions, _matched_model_predictions.pipe(
+        ClassificationPredictionMatchSchemaWithClassNames
+    )

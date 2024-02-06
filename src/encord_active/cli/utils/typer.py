@@ -58,10 +58,16 @@ def rich_format_help_ea(
         if getattr(param, "hidden", False):
             continue
         if isinstance(param, click.Argument):
-            panel_name = getattr(param, rutils._RICH_HELP_PANEL_NAME, None) or rutils.ARGUMENTS_PANEL_TITLE
+            panel_name = (
+                getattr(param, rutils._RICH_HELP_PANEL_NAME, None)
+                or rutils.ARGUMENTS_PANEL_TITLE
+            )
             panel_to_arguments[panel_name].append(param)
         elif isinstance(param, click.Option):
-            panel_name = getattr(param, rutils._RICH_HELP_PANEL_NAME, None) or rutils.OPTIONS_PANEL_TITLE
+            panel_name = (
+                getattr(param, rutils._RICH_HELP_PANEL_NAME, None)
+                or rutils.OPTIONS_PANEL_TITLE
+            )
             panel_to_options[panel_name].append(param)
 
     default_arguments = panel_to_arguments.get(rutils.ARGUMENTS_PANEL_TITLE, [])
@@ -114,7 +120,10 @@ def rich_format_help_ea(
         for command_name in obj.list_commands(ctx):
             command = obj.get_command(ctx, command_name)
             if command and not command.hidden:
-                panel_name = getattr(command, rutils._RICH_HELP_PANEL_NAME, None) or rutils.COMMANDS_PANEL_TITLE
+                panel_name = (
+                    getattr(command, rutils._RICH_HELP_PANEL_NAME, None)
+                    or rutils.COMMANDS_PANEL_TITLE
+                )
                 panel_to_commands[panel_name].append(command)
 
         # Print each command group panel

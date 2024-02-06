@@ -139,7 +139,9 @@ def main(params):
             if params.logging.wandb_enabled:
                 train_map_logs = {}
                 if params.logging.log_train_map:
-                    train_map_logs = {f"train/{k}": v.item() for k, v in train_map.items()}
+                    train_map_logs = {
+                        f"train/{k}": v.item() for k, v in train_map.items()
+                    }
                 val_map_logs = {f"val/{k}": v.item() for k, v in val_map.items()}
                 wandb.log(
                     {
@@ -184,11 +186,12 @@ def main(params):
 
 
 if __name__ == "__main__":
-
     params = get_config("config.ini")
     if params.logging.wandb_enabled:
         wandb.init(project=params.logging.wandb_project, save_code=True)
-        wandb.run.name = os.path.basename(__file__)[:-3] + "_" + wandb.run.name.split("-")[2]
+        wandb.run.name = (
+            os.path.basename(__file__)[:-3] + "_" + wandb.run.name.split("-")[2]
+        )
         wandb.run.save()
 
         config = wandb.config

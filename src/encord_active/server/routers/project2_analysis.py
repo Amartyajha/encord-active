@@ -77,7 +77,8 @@ def metric_search(
     base_table = tables.annotation or tables.data
     where = search_query.search_filters(
         tables=tables,
-        base="analytics",  # FIXME: this should select the best base table (reduction if no analytics filters)
+        # FIXME: this should select the best base table (reduction if no analytics filters)
+        base="analytics",
         search=filters,
         project_filters={"project_hash": [project_hash]},
     )
@@ -85,7 +86,9 @@ def metric_search(
     print(f"Where debugging =>: {where}")
 
     with Session(engine) as sess:
-        query = select(*[getattr(base_table.analytics, join_attr) for join_attr in base_table.join]).where(*where)
+        query = select(
+            *[getattr(base_table.analytics, join_attr) for join_attr in base_table.join]
+        ).where(*where)
 
         if order_by is not None:
             if order_by in base_table.metrics or order_by in base_table.enums:
@@ -104,7 +107,8 @@ def metric_search(
     return {
         "truncated": truncated,
         "results": [
-            {join_attr: value for join_attr, value in zip(base_table.join, result)} for result in search_results[:-1]
+            {join_attr: value for join_attr, value in zip(base_table.join, result)}
+            for result in search_results[:-1]
         ],
     }
 
@@ -191,7 +195,10 @@ def get_2d_embedding_summary(
             )
         )
         results = sess.exec(query)
-    return {"count": sum(n for x, y, n in results), "2d_embedding": [{"x": x, "y": y, "n": n} for x, y, n in results]}
+    return {
+        "count": sum(n for x, y, n in results),
+        "2d_embedding": [{"x": x, "y": y, "n": n} for x, y, n in results],
+    }
 
 
 @functools.lru_cache(maxsize=2)
@@ -203,14 +210,19 @@ def _get_nn_descent(
     with Session(engine) as sess:
         query = select(
             base_domain.metadata.embedding_clip,
-            *[getattr(base_domain.metadata, join_attr) for join_attr in base_domain.join],
+            *[
+                getattr(base_domain.metadata, join_attr)
+                for join_attr in base_domain.join
+            ],
         ).where(
             # FIXME: will break for nearest embedding on predictions
             base_domain.metadata.project_hash == project_hash,  # type: ignore
             is_not(base_domain.metadata.embedding_clip, None),
         )
         results = sess.exec(query).fetchall()
-    embeddings = np.stack([np.frombuffer(e[0], dtype=np.float) for e in results]).astype(np.float32)  # type: ignore
+    embeddings = np.stack(
+        [np.frombuffer(e[0], dtype=np.float) for e in results]
+    ).astype(np.float32)  # type: ignore
     index = NNDescent(embeddings, n_neighbors=50, metric="cosine")
     return index, results  # type: ignore
 
@@ -250,7 +262,9 @@ def search_similarity(
             raise ValueError("Source entry does not exist or missing embedding")
 
     index, results = _get_nn_descent(project_hash, domain)
-    indices, similarity = index.query(np.frombuffer(src_embedding, dtype=np.float).reshape(1, -1), k=50)  # type: ignore
+    indices, similarity = index.query(
+        np.frombuffer(src_embedding, dtype=np.float).reshape(1, -1), k=50
+    )  # type: ignore
     seen = set()
     similarity_results = []
     for i, s in zip(indices[0], similarity[0]):
@@ -287,12 +301,18 @@ def compare_metric_dissimilarity(
             all_data_1 = sess.exec(
                 select(
                     metric_attr,
-                ).where(base_domain.analytics.project_hash == project_hash, is_not(metric_attr, None))
+                ).where(
+                    base_domain.analytics.project_hash == project_hash,
+                    is_not(metric_attr, None),
+                )
             ).fetchall()
             all_data_2 = sess.exec(
                 select(
                     metric_attr,
-                ).where(base_domain.analytics.project_hash == compare_project_hash, is_not(metric_attr, None))
+                ).where(
+                    base_domain.analytics.project_hash == compare_project_hash,
+                    is_not(metric_attr, None),
+                )
             ).fetchall()
             if len(all_data_1) > 0 and len(all_data_2) > 0:
                 k_score, _ = ks_2samp(np.array(all_data_1), np.array(all_data_2))

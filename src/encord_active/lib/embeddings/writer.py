@@ -5,7 +5,14 @@ from typing import Optional, Union
 from encord_active.lib.common.iterator import Iterator
 from encord_active.lib.common.writer import CSVWriter
 
-EMBEDDING_CSV_FIELDS = ["identifier", "embedding", "description", "object_class", "frame", "url"]
+EMBEDDING_CSV_FIELDS = [
+    "identifier",
+    "embedding",
+    "description",
+    "object_class",
+    "frame",
+    "url",
+]
 
 
 class CSVEmbeddingWriter(CSVWriter):

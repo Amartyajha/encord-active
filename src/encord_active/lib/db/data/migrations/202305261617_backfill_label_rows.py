@@ -23,7 +23,10 @@ def up(pfs: ProjectFileStructure):
     with PrismaConnection(pfs) as conn:
         fill_label_rows = conn.labelrow.count() == 0
         fill_data_units = conn.dataunit.count() == 0
-        old_style_data = conn.labelrow.find_first(where={"label_row_json": None}) is not None or fill_label_rows
+        old_style_data = (
+            conn.labelrow.find_first(where={"label_row_json": None}) is not None
+            or fill_label_rows
+        )
         if not (fill_label_rows or fill_data_units or old_style_data):
             return
         migration_counter = tqdm(
@@ -40,7 +43,11 @@ def up(pfs: ProjectFileStructure):
                 try:
                     label_row_dict = label_row.label_row_json
                 except ValueError:
-                    legacy_label_row_file = label_row.label_row_file_deprecated_for_migration().read_text("utf-8")
+                    legacy_label_row_file = (
+                        label_row.label_row_file_deprecated_for_migration().read_text(
+                            "utf-8"
+                        )
+                    )
                     label_row_dict = json.loads(legacy_label_row_file)
 
                 label_hash = label_row_dict["label_hash"]
@@ -54,8 +61,12 @@ def up(pfs: ProjectFileStructure):
                             data_hash=lr_data_hash,
                             data_title=label_row_dict["data_title"],
                             data_type=data_type,
-                            created_at=label_row_meta[label_hash].get("created_at", datetime.now()),
-                            last_edited_at=label_row_meta[label_hash].get("last_edited_at", datetime.now()),
+                            created_at=label_row_meta[label_hash].get(
+                                "created_at", datetime.now()
+                            ),
+                            last_edited_at=label_row_meta[label_hash].get(
+                                "last_edited_at", datetime.now()
+                            ),
                             label_row_json=json.dumps(label_row_dict),
                         )
                     )
@@ -71,7 +82,10 @@ def up(pfs: ProjectFileStructure):
 
                 if fill_data_units or old_style_data:
                     data_units = label_row_dict["data_units"]
-                    legacy_lr_path = label_row.label_row_file_deprecated_for_migration().parent / "images"
+                    legacy_lr_path = (
+                        label_row.label_row_file_deprecated_for_migration().parent
+                        / "images"
+                    )
                     db_data_unit = list(label_row.iter_data_unit())
                     if len(db_data_unit) == 0:
                         # For migrating fully empty db condition
@@ -93,7 +107,12 @@ def up(pfs: ProjectFileStructure):
                             for frame in (
                                 [type_hack_optional_int_none]
                                 if du["data_type"] != "video"
-                                else [i for i, pth in enumerate(legacy_lr_path.glob(f"{du['data_hash']}_*"))]
+                                else [
+                                    i
+                                    for i, pth in enumerate(
+                                        legacy_lr_path.glob(f"{du['data_hash']}_*")
+                                    )
+                                ]
                             )
                         ]
 
@@ -102,10 +121,20 @@ def up(pfs: ProjectFileStructure):
                         migration_counter.display(
                             f"Migrating data_hash: {label_row.label_hash} / {data_unit.du_hash} / {data_unit.frame}"
                         )
-                        if data_unit.frame is not None and data_unit.frame != -1 and data_type == "video":
-                            legacy_du_path = next(legacy_lr_path.glob(f"{data_unit.du_hash}_{data_unit.frame}.*"))
+                        if (
+                            data_unit.frame is not None
+                            and data_unit.frame != -1
+                            and data_type == "video"
+                        ):
+                            legacy_du_path = next(
+                                legacy_lr_path.glob(
+                                    f"{data_unit.du_hash}_{data_unit.frame}.*"
+                                )
+                            )
                         else:
-                            legacy_du_path = next(legacy_lr_path.glob(f"{data_unit.du_hash}.*"))
+                            legacy_du_path = next(
+                                legacy_lr_path.glob(f"{data_unit.du_hash}.*")
+                            )
 
                         du = data_units[data_unit.du_hash]
                         frames_per_second = 0.0
@@ -115,8 +144,12 @@ def up(pfs: ProjectFileStructure):
                             else:
                                 _, frame_str = legacy_du_path.stem.rsplit("_", 1)
                             # Lookup frames per second
-                            legacy_du_video_path = next(legacy_lr_path.glob(f"{data_unit.du_hash}.*"))
-                            frames_per_second = get_frames_per_second(legacy_du_video_path)
+                            legacy_du_video_path = next(
+                                legacy_lr_path.glob(f"{data_unit.du_hash}.*")
+                            )
+                            frames_per_second = get_frames_per_second(
+                                legacy_du_video_path
+                            )
                             data_uri_path = legacy_du_video_path
                         else:
                             frame_str = du.get("data_sequence", 0)
@@ -126,7 +159,9 @@ def up(pfs: ProjectFileStructure):
                         if frame != -1 or data_type != "video":
                             image = Image.open(legacy_du_path)
                         else:
-                            legacy_du_any_frame_path = next(legacy_lr_path.glob(f"{data_unit.du_hash}_*"))
+                            legacy_du_any_frame_path = next(
+                                legacy_lr_path.glob(f"{data_unit.du_hash}_*")
+                            )
                             image = Image.open(legacy_du_any_frame_path)
 
                         if fill_data_units:

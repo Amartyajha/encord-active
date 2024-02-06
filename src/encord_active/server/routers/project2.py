@@ -62,15 +62,23 @@ class ProjectReturn(TypedDict):
     stats: Optional[ProjectStats]
 
 
-def _get_first_image_with_polygons_url(project_hash: uuid.UUID) -> Optional[Tuple[str, float]]:
+def _get_first_image_with_polygons_url(
+    project_hash: uuid.UUID
+) -> Optional[Tuple[str, float]]:
     with Session(engine) as sess:
         data_units = sess.exec(
-            select(ProjectDataUnitMetadata).where(ProjectDataUnitMetadata.project_hash == project_hash).limit(100)
+            select(ProjectDataUnitMetadata)
+            .where(ProjectDataUnitMetadata.project_hash == project_hash)
+            .limit(100)
         ).fetchall()
         for data_unit in data_units:
             if not data_unit:
                 break
-            preview = display_preview(project_hash=project_hash, du_hash=data_unit.du_hash, frame=data_unit.frame)
+            preview = display_preview(
+                project_hash=project_hash,
+                du_hash=data_unit.du_hash,
+                frame=data_unit.frame,
+            )
             return preview["url"], preview["timestamp"]
     return None
 
@@ -89,7 +97,9 @@ def get_all_projects() -> Dict[str, ProjectReturn]:
     #     for project_hash, title, description in projects
     # }
     sandbox_projects = {}
-    for name, data in available_prebuilt_projects(get_settings().AVAILABLE_SANDBOX_PROJECTS).items():
+    for name, data in available_prebuilt_projects(
+        get_settings().AVAILABLE_SANDBOX_PROJECTS
+    ).items():
         project_hash_uuid = uuid.UUID(data["hash"])
         sandbox_projects[str(project_hash_uuid)] = ProjectReturn(
             title=name,
@@ -104,10 +114,17 @@ def get_all_projects() -> Dict[str, ProjectReturn]:
 
     with Session(engine) as sess:
         db_projects = sess.exec(
-            select(Project.project_hash, Project.project_name, Project.project_description, Project.project_ontology)
+            select(
+                Project.project_hash,
+                Project.project_name,
+                Project.project_description,
+                Project.project_ontology,
+            )
         ).fetchall()
         data_count = sess.exec(
-            select(ProjectDataMetadata.project_hash, sql_count()).group_by(ProjectDataMetadata.project_hash)
+            select(ProjectDataMetadata.project_hash, sql_count()).group_by(
+                ProjectDataMetadata.project_hash
+            )
         ).fetchall()
         data_count_dict = {p: c for p, c in data_count}
         annotation_count = sess.exec(
@@ -147,7 +164,9 @@ def get_all_projects() -> Dict[str, ProjectReturn]:
     return {**projects, **sandbox_projects}
 
 
-def _metric_summary(metrics: Dict[str, MetricDefinition], fixme_exclude: Optional[Set[str]] = None):
+def _metric_summary(
+    metrics: Dict[str, MetricDefinition], fixme_exclude: Optional[Set[str]] = None
+):
     return {
         metric_name: {
             "title": metric.title,
@@ -174,11 +193,15 @@ def _enum_summary(enums: Dict[str, EnumDefinition]):
 @router.get("/{project_hash}/summary")
 def get_project_summary(project_hash: uuid.UUID):
     with Session(engine) as sess:
-        project = sess.exec(select(Project).where(Project.project_hash == project_hash)).first()
+        project = sess.exec(
+            select(Project).where(Project.project_hash == project_hash)
+        ).first()
         if project is None:
             raise ValueError()
 
-        tags = sess.exec(select(ProjectTag).where(ProjectTag.project_hash == project_hash)).fetchall()
+        tags = sess.exec(
+            select(ProjectTag).where(ProjectTag.project_hash == project_hash)
+        ).fetchall()
 
         preview = sess.exec(
             select(ProjectAnnotationAnalytics.du_hash, ProjectAnnotationAnalytics.frame)
@@ -203,12 +226,15 @@ def get_project_summary(project_hash: uuid.UUID):
             .group_by(ProjectDataAnalytics.du_hash)
         ).first()
         annotation_count = sess.exec(
-            select(sql_count()).where(ProjectAnnotationAnalytics.project_hash == project_hash)
+            select(sql_count()).where(
+                ProjectAnnotationAnalytics.project_hash == project_hash
+            )
         ).first()
         classification_count = sess.exec(
             select(sql_count()).where(
                 ProjectAnnotationAnalytics.project_hash == project_hash,
-                ProjectAnnotationAnalytics.annotation_type == AnnotationType.CLASSIFICATION,
+                ProjectAnnotationAnalytics.annotation_type
+                == AnnotationType.CLASSIFICATION,
             )
         ).first()
 
@@ -251,14 +277,20 @@ def get_project_summary(project_hash: uuid.UUID):
             "enums": _enum_summary(AnnotationEnums | DataEnums),
         },
         "tags": {tag.tag_hash: tag.name for tag in tags},
-        "preview": {"du_hash": preview[0], "frame": preview[1]} if preview is not None else None,
+        "preview": {"du_hash": preview[0], "frame": preview[1]}
+        if preview is not None
+        else None,
     }
 
 
 @router.get("/{project_hash}/reductions")
 def list_supported_2d_embedding_reductions(project_hash: uuid.UUID):
     with Session(engine) as sess:
-        r = sess.exec(select(ProjectEmbeddingReduction).where(ProjectEmbeddingReduction.project_hash == project_hash))
+        r = sess.exec(
+            select(ProjectEmbeddingReduction).where(
+                ProjectEmbeddingReduction.project_hash == project_hash
+            )
+        )
     return {
         "results": {
             e.reduction_hash: {
@@ -274,7 +306,9 @@ def list_supported_2d_embedding_reductions(project_hash: uuid.UUID):
 @router.get("/{project_hash}/files/{du_hash}/{frame}")
 def display_raw_file(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int):
     with Session(engine) as sess:
-        query = select(ProjectDataUnitMetadata.data_uri,).where(
+        query = select(
+            ProjectDataUnitMetadata.data_uri,
+        ).where(
             ProjectDataUnitMetadata.project_hash == project_hash,
             ProjectDataUnitMetadata.du_hash == du_hash,
             ProjectDataUnitMetadata.frame == frame,
@@ -290,10 +324,17 @@ def display_raw_file(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int):
 
 
 @router.get("/{project_hash}/preview/{du_hash}/{frame}/{object_hash}")
-def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, object_hash: Optional[str] = None):
+def display_preview(
+    project_hash: uuid.UUID,
+    du_hash: uuid.UUID,
+    frame: int,
+    object_hash: Optional[str] = None,
+):
     objects: List[dict] = []
     with Session(engine) as sess:
-        project = sess.exec(select(Project).where(Project.project_hash == project_hash)).first()
+        project = sess.exec(
+            select(Project).where(Project.project_hash == project_hash)
+        ).first()
         query = select(
             ProjectDataUnitMetadata.data_uri,
             ProjectDataUnitMetadata.data_uri_is_video,
@@ -309,8 +350,11 @@ def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, obj
             raise ValueError("Missing project data unit metadata")
         uri, uri_is_video, objects, data_hash = result  # type: ignore
         data_metadata = sess.exec(
-            select(ProjectDataMetadata.label_hash, ProjectDataMetadata.frames_per_second).where(
-                ProjectDataMetadata.project_hash == project_hash, ProjectDataMetadata.data_hash == data_hash
+            select(
+                ProjectDataMetadata.label_hash, ProjectDataMetadata.frames_per_second
+            ).where(
+                ProjectDataMetadata.project_hash == project_hash,
+                ProjectDataMetadata.data_hash == data_hash,
             )
         ).first()
         if data_metadata is None:
@@ -329,7 +373,10 @@ def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, obj
                     ProjectTaggedDataUnit.du_hash == du_hash,
                     ProjectTaggedDataUnit.frame == frame,
                 )
-                .join(ProjectTaggedDataUnit, ProjectTaggedDataUnit.tag_hash == ProjectTag.tag_hash)
+                .join(
+                    ProjectTaggedDataUnit,
+                    ProjectTaggedDataUnit.tag_hash == ProjectTag.tag_hash,
+                )
             )
         else:
             query_tags = (
@@ -342,7 +389,10 @@ def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, obj
                     ProjectTaggedAnnotation.frame == frame,
                     ProjectTaggedAnnotation.object_hash == object_hash,
                 )
-                .join(ProjectTaggedAnnotation, ProjectTaggedAnnotation.tag_hash == ProjectTag.tag_hash)
+                .join(
+                    ProjectTaggedAnnotation,
+                    ProjectTaggedAnnotation.tag_hash == ProjectTag.tag_hash,
+                )
             )
         result_tags = sess.exec(query_tags).fetchall()
     if object_hash is not None:
@@ -357,13 +407,17 @@ def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, obj
             uri = f"/projects_v2/{project_hash}/files/{du_hash}/{frame}"
     elif project is not None and project.project_remote_ssh_key_path is not None:
         encord_project = get_encord_project(
-            ssh_key_path=project.project_remote_ssh_key_path, project_hash=str(project_hash)
+            ssh_key_path=project.project_remote_ssh_key_path,
+            project_hash=str(project_hash),
         )
-        uri = encord_project.get_label_row(str(label_hash), get_signed_url=True,)["data_units"][
-            str(du_hash)
-        ]["data_link"]
+        uri = encord_project.get_label_row(
+            str(label_hash),
+            get_signed_url=True,
+        )["data_units"][str(du_hash)]["data_link"]
     else:
-        raise ValueError(f"Cannot resolve project url: {project_hash} / {label_hash} / {du_hash}")
+        raise ValueError(
+            f"Cannot resolve project url: {project_hash} / {label_hash} / {du_hash}"
+        )
 
     timestamp = None
     if uri_is_video:
@@ -371,7 +425,12 @@ def display_preview(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int, obj
             raise ValueError("Video defined but missing valid frames_per_second")
         timestamp = (float(int(frame)) + 0.5) / float(frames_per_second)
 
-    return {"url": uri, "timestamp": timestamp, "objects": objects, "tags": [tag.tag_hash for tag in result_tags]}
+    return {
+        "url": uri,
+        "timestamp": timestamp,
+        "objects": objects,
+        "tags": [tag.tag_hash for tag in result_tags],
+    }
 
 
 @router.get("/{project_hash}/preview/{du_hash}/{frame}/")
@@ -393,7 +452,8 @@ def item(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int):
             raise ValueError("Invalid request")
         data_meta = sess.exec(
             select(ProjectDataMetadata).where(
-                ProjectDataMetadata.project_hash == project_hash, ProjectDataMetadata.data_hash == du_meta.data_hash
+                ProjectDataMetadata.project_hash == project_hash,
+                ProjectDataMetadata.data_hash == du_meta.data_hash,
             )
         ).first()
         if data_meta is None:
@@ -421,7 +481,10 @@ def item(project_hash: uuid.UUID, du_hash: uuid.UUID, frame: int):
         "objects": [
             {
                 **obj,
-                "metrics": {k: getattr(obj_metrics[obj["objectHash"]], k) for k in AnnotationMetrics},
+                "metrics": {
+                    k: getattr(obj_metrics[obj["objectHash"]], k)
+                    for k in AnnotationMetrics
+                },
                 "tags": [],
             }
             for obj in du_meta.objects
@@ -446,23 +509,33 @@ def list_project_predictions(
 ):
     with Session(engine) as sess:
         predictions = sess.exec(
-            select(ProjectPrediction).where(ProjectPrediction.project_hash == project_hash)
+            select(ProjectPrediction).where(
+                ProjectPrediction.project_hash == project_hash
+            )
         ).fetchall()
     return {
         "total": len(predictions),
         "results": [
-            {"name": prediction.name, "prediction_hash": prediction.prediction_hash} for prediction in predictions
+            {"name": prediction.name, "prediction_hash": prediction.prediction_hash}
+            for prediction in predictions
         ],
     }
 
 
 @router.post("/{project_hash}/create/tag/data")
-def create_data_tag(project_hash: uuid.UUID, data: List[Tuple[uuid.UUID, int]], name: str):
+def create_data_tag(
+    project_hash: uuid.UUID, data: List[Tuple[uuid.UUID, int]], name: str
+):
     tag_hash = uuid.uuid4()
     with Session(engine) as sess:
         sess.add(ProjectTag(tag_hash=tag_hash, project_hash=project_hash, name=name))
         tags = [
-            ProjectTaggedDataUnit(project_hash=project_hash, du_hash=du_hash, frame=frame, tag_hash=tag_hash)
+            ProjectTaggedDataUnit(
+                project_hash=project_hash,
+                du_hash=du_hash,
+                frame=frame,
+                tag_hash=tag_hash,
+            )
             for du_hash, frame in data
         ]
         sess.add_all(tags)
@@ -470,13 +543,19 @@ def create_data_tag(project_hash: uuid.UUID, data: List[Tuple[uuid.UUID, int]], 
 
 
 @router.post("/{project_hash}/create/tag/annotation")
-def create_annotation_tag(project_hash: uuid.UUID, annotations: List[Tuple[uuid.UUID, int, str]], name: str):
+def create_annotation_tag(
+    project_hash: uuid.UUID, annotations: List[Tuple[uuid.UUID, int, str]], name: str
+):
     tag_hash = uuid.uuid4()
     with Session(engine) as sess:
         sess.add(ProjectTag(tag_hash=tag_hash, project_hash=project_hash, name=name))
         tags = [
             ProjectTaggedAnnotation(
-                project_hash=project_hash, du_hash=du_hash, frame=frame, object_hash=object_hash, tag_hash=tag_hash
+                project_hash=project_hash,
+                du_hash=du_hash,
+                frame=frame,
+                object_hash=object_hash,
+                tag_hash=tag_hash,
             )
             for du_hash, frame, object_hash in annotations
         ]

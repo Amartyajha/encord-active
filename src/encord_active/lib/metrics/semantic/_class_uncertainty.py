@@ -36,7 +36,9 @@ class DenseBlock(nn.Module):
     ):
         super().__init__()
         if residual > 0:
-            assert input_dim == out_dim, "Input and output dimensions must match for residual connections"
+            assert (
+                input_dim == out_dim
+            ), "Input and output dimensions must match for residual connections"
 
         self.residual = residual
         step = int(round((out_dim - input_dim) / layers))
@@ -53,7 +55,11 @@ class DenseBlock(nn.Module):
 
     def forward(self, x):
         output = self.module(x)
-        return self.residual * x + (1 - self.residual) * output if self.residual > 0 else output
+        return (
+            self.residual * x + (1 - self.residual) * output
+            if self.residual > 0
+            else output
+        )
 
 
 class BayesianClassifier(nn.Module):
@@ -108,7 +114,9 @@ def get_prediction_statistics(outputs):
 def train_model(classifier, model_path, batches, idx_to_counts, name_to_idx):
     train_batches, val_batches = train_test_split(batches)
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
-    criterion = nn.CrossEntropyLoss(weight=1 / torch.tensor(list(idx_to_counts.values()))).to(DEVICE)
+    criterion = nn.CrossEntropyLoss(
+        weight=1 / torch.tensor(list(idx_to_counts.values()))
+    ).to(DEVICE)
     count = 0
     min_loss = torch.inf
     for epoch in range(50):
@@ -118,23 +126,31 @@ def train_model(classifier, model_path, batches, idx_to_counts, name_to_idx):
         train_accuracy_epoch = 0
         for batch in train_batches:
             optimizer.zero_grad()
-            labels, mean_probs, model_preds, entropy = base_predict(classifier, batch, name_to_idx)
+            labels, mean_probs, model_preds, entropy = base_predict(
+                classifier, batch, name_to_idx
+            )
 
             loss = criterion(mean_probs, labels)
             loss.backward()
             optimizer.step()
             train_loss_epoch += loss.item() / len(train_batches)
-            train_accuracy_epoch += (model_preds == labels).sum().item() / (len(train_batches) * len(labels))
+            train_accuracy_epoch += (model_preds == labels).sum().item() / (
+                len(train_batches) * len(labels)
+            )
 
         with classifier.mc_eval():
             val_loss_epoch = 0
             val_accuracy_epoch = 0
             for batch in val_batches:
-                labels, mean_probs, model_preds, entropy = base_predict(classifier, batch, name_to_idx)
+                labels, mean_probs, model_preds, entropy = base_predict(
+                    classifier, batch, name_to_idx
+                )
 
                 loss = criterion(mean_probs, labels)
                 val_loss_epoch += loss.item() / len(val_batches)
-                val_accuracy_epoch += (model_preds == labels).sum().item() / (len(val_batches) * len(labels))
+                val_accuracy_epoch += (model_preds == labels).sum().item() / (
+                    len(val_batches) * len(labels)
+                )
 
         if val_loss_epoch < min_loss:
             count = 0
@@ -145,14 +161,20 @@ def train_model(classifier, model_path, batches, idx_to_counts, name_to_idx):
             if count == 10:
                 break
 
-        logger.debug(f"---------------------------Epoch {epoch} ---------------------------")
+        logger.debug(
+            f"---------------------------Epoch {epoch} ---------------------------"
+        )
         logger.debug(f"Train loss {train_loss_epoch} || Val loss {val_loss_epoch}")
-        logger.debug(f"Train accuracy {train_accuracy_epoch} || Val accuracy {val_accuracy_epoch}")
+        logger.debug(
+            f"Train accuracy {train_accuracy_epoch} || Val accuracy {val_accuracy_epoch}"
+        )
 
 
 def base_predict(classifier, batch, name_to_idx):
     embeddings = torch.Tensor([eval(x) for x in batch["embedding"]]).to(DEVICE)
-    labels = torch.LongTensor([name_to_idx[x] for x in batch["object_class"]]).to(DEVICE)
+    labels = torch.LongTensor([name_to_idx[x] for x in batch["object_class"]]).to(
+        DEVICE
+    )
     outputs = classifier(embeddings)
     model_preds, mean_probs, entropy = get_prediction_statistics(outputs)
     return labels, mean_probs, model_preds, entropy
@@ -163,7 +185,9 @@ def train_test_split(batches):
     sizes = [max(1, x) for x in sizes]
     cumsum = np.cumsum(sizes)
     cumsum = np.insert(cumsum, 0, 0)
-    train_batches, val_batches = [batches[cumsum[i] : cumsum[i + 1]] for i in range(len(sizes))]
+    train_batches, val_batches = [
+        batches[cumsum[i] : cumsum[i + 1]] for i in range(len(sizes))
+    ]
     return train_batches, val_batches
 
 
@@ -171,18 +195,27 @@ def get_batches_and_model(resnet_embeddings_df):
     cls_set = set(resnet_embeddings_df["object_class"])
     name_to_idx = {name: idx for idx, name in enumerate(cls_set)}
     idx_to_counts = {
-        name_to_idx[cls_name]: (resnet_embeddings_df["object_class"] == cls_name).sum() for cls_name in cls_set
+        name_to_idx[cls_name]: (resnet_embeddings_df["object_class"] == cls_name).sum()
+        for cls_name in cls_set
     }
-    classifier = BayesianClassifier(n_classes=len(cls_set), n_train_samples=3, n_test_samples=20).to(DEVICE)
+    classifier = BayesianClassifier(
+        n_classes=len(cls_set), n_train_samples=3, n_test_samples=20
+    ).to(DEVICE)
     batches = np.array_split(resnet_embeddings_df, resnet_embeddings_df.shape[0] // 64)
     return batches, classifier, idx_to_counts, name_to_idx
 
 
 def preliminaries(iterator):
-    model_path = os.path.join(iterator.cache_dir, "models", f"{Path(__file__).stem}_classifier.pt")
+    model_path = os.path.join(
+        iterator.cache_dir, "models", f"{Path(__file__).stem}_classifier.pt"
+    )
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    resnet_embeddings_df = get_embeddings(iterator, embedding_type=EmbeddingType.OBJECT, force=False)
-    batches, classifier, idx_to_counts, name_to_idx = get_batches_and_model(resnet_embeddings_df)
+    resnet_embeddings_df = get_embeddings(
+        iterator, embedding_type=EmbeddingType.OBJECT, force=False
+    )
+    batches, classifier, idx_to_counts, name_to_idx = get_batches_and_model(
+        resnet_embeddings_df
+    )
     if not os.path.isfile(model_path):
         train_model(classifier, model_path, batches, idx_to_counts, name_to_idx)
     classifier.load_state_dict(torch.load(model_path))
@@ -208,9 +241,13 @@ network and Monte-Carlo Dropout to estimate the uncertainty of the label.""",
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
         batches, classifier, name_to_idx, resnet_embeddings_df = preliminaries(iterator)
         with classifier.mc_eval() and torch.inference_mode():
-            pbar = tqdm.tqdm(total=len(resnet_embeddings_df), desc="Predicting uncertainty")
+            pbar = tqdm.tqdm(
+                total=len(resnet_embeddings_df), desc="Predicting uncertainty"
+            )
             for batch in batches:
-                labels, mean_probs, model_preds, entropy = base_predict(classifier, batch, name_to_idx)
+                labels, mean_probs, model_preds, entropy = base_predict(
+                    classifier, batch, name_to_idx
+                )
 
                 for i, ent in enumerate(entropy):
                     writer.write(
@@ -243,10 +280,16 @@ class ConfidenceScoreMetric(Metric):
         batches, classifier, name_to_idx, resnet_embeddings_df = preliminaries(iterator)
 
         with classifier.mc_eval() and torch.inference_mode():
-            pbar = tqdm.tqdm(total=len(resnet_embeddings_df), desc="Predicting uncertainty")
+            pbar = tqdm.tqdm(
+                total=len(resnet_embeddings_df), desc="Predicting uncertainty"
+            )
             for batch in batches:
-                labels, mean_probs, model_preds, entropy = base_predict(classifier, batch, name_to_idx)
-                model_confidence = torch.gather(mean_probs, dim=-1, index=labels.unsqueeze(-1))
+                labels, mean_probs, model_preds, entropy = base_predict(
+                    classifier, batch, name_to_idx
+                )
+                model_confidence = torch.gather(
+                    mean_probs, dim=-1, index=labels.unsqueeze(-1)
+                )
                 for i, conf in enumerate(model_confidence):
                     writer.write(
                         round(conf.item(), 6),

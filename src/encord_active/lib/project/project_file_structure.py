@@ -82,24 +82,32 @@ class LabelRowStructure:
     def label_row_file_deprecated_for_migration(self) -> Path:
         return self._project.project_dir / "data" / self._label_hash / "label_row.json"
 
-    def get_label_row_from_db(self, cache_db: Optional[prisma.Prisma] = None) -> "prisma.models.LabelRow":
+    def get_label_row_from_db(
+        self, cache_db: Optional[prisma.Prisma] = None
+    ) -> "prisma.models.LabelRow":
         if self._label_row is not None:
             return self._label_row
         with PrismaConnection(self._project, cache_db=cache_db) as conn:
             res = conn.labelrow.find_unique(where={"label_hash": self._label_hash})
             if res is None:
-                raise ValueError(f"label_row missing in prisma db(label_hash={self._label_hash})")
+                raise ValueError(
+                    f"label_row missing in prisma db(label_hash={self._label_hash})"
+                )
             return res
 
     @property
     def label_row_from_db(self) -> "prisma.models.LabelRow":
         return self.get_label_row_from_db()
 
-    def get_label_row_json(self, cache_db: Optional[prisma.Prisma] = None) -> Dict[str, Any]:
+    def get_label_row_json(
+        self, cache_db: Optional[prisma.Prisma] = None
+    ) -> Dict[str, Any]:
         entry = self.get_label_row_from_db(cache_db=cache_db)
         label_row_json = entry.label_row_json
         if label_row_json is None:
-            raise ValueError(f"label_row_json does not exist (label_hash={self._label_hash}, row={entry is not None})")
+            raise ValueError(
+                f"label_row_json does not exist (label_hash={self._label_hash}, row={entry is not None})"
+            )
         return json.loads(label_row_json)
 
     @property
@@ -110,15 +118,23 @@ class LabelRowStructure:
     def label_hash(self) -> str:
         return self._label_hash
 
-    def set_label_row_json(self, label_row_json: Dict[str, Any], cache_db: Optional[prisma.Prisma] = None) -> None:
+    def set_label_row_json(
+        self, label_row_json: Dict[str, Any], cache_db: Optional[prisma.Prisma] = None
+    ) -> None:
         with PrismaConnection(self._project, cache_db=cache_db) as conn:
             conn.labelrow.update(
-                where={"label_hash": self._label_hash}, data={"label_row_json": json.dumps(label_row_json)}
+                where={"label_hash": self._label_hash},
+                data={"label_row_json": json.dumps(label_row_json)},
             )
         # Mark out of date.
         self._label_row = None
 
-    def clone_label_row_json(self, source: "LabelRowStructure", label_row_json: str, local_path: Optional[str]) -> None:
+    def clone_label_row_json(
+        self,
+        source: "LabelRowStructure",
+        label_row_json: str,
+        local_path: Optional[str],
+    ) -> None:
         with PrismaConnection(source._project) as conn:
             rows = conn.labelrow.find_many(
                 where={
@@ -148,7 +164,9 @@ class LabelRowStructure:
         cache_db: Optional["prisma.Prisma"] = None,
     ) -> Iterator[DataUnitStructure]:
         with PrismaConnection(self._project, cache_db=cache_db) as conn:
-            where: "prisma.types.LabelRowWhereInput" = {"label_hash": {"equals": self._label_hash}}
+            where: "prisma.types.LabelRowWhereInput" = {
+                "label_hash": {"equals": self._label_hash}
+            }
             du_where: "prisma.types.DataUnitWhereInput" = {}
             if data_unit_hash is not None:
                 du_hash = data_unit_hash  # FIXME: , data_unit_hash)
@@ -175,16 +193,21 @@ class LabelRowStructure:
             # Create encord client if it will be needed in the future.
             encord_project_metadata = self._project.load_project_meta()
             encord_project = None
-            if encord_project_metadata.get("has_remote", False) and requre_remote_image_fetch:
+            if (
+                encord_project_metadata.get("has_remote", False)
+                and requre_remote_image_fetch
+            ):
                 encord_project = get_encord_project_cached(
-                    encord_project_metadata["ssh_key_path"], encord_project_metadata["project_hash"]
+                    encord_project_metadata["ssh_key_path"],
+                    encord_project_metadata["project_hash"],
                 )
 
             for label_row in all_rows:
                 data_links = {}
                 if encord_project is not None:
                     if any(
-                        data_unit.data_uri is None and data_unit.data_hash not in cached_signed_urls
+                        data_unit.data_uri is None
+                        and data_unit.data_hash not in cached_signed_urls
                         for data_unit in label_row.data_units or []
                     ):
                         data_links = encord_project.get_label_row(
@@ -231,7 +254,9 @@ class LabelRowStructure:
         label_row_json = self.get_label_row_json(cache_db=cache_db)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            for data_unit_struct in self.iter_data_unit(data_unit_hash=data_unit_hash, frame=frame, cache_db=cache_db):
+            for data_unit_struct in self.iter_data_unit(
+                data_unit_hash=data_unit_hash, frame=frame, cache_db=cache_db
+            ):
                 if data_unit_struct.data_type in {"img_group", "image"}:
                     image = download_image(
                         data_unit_struct.signed_url,
@@ -243,19 +268,31 @@ class LabelRowStructure:
                     video_dir.mkdir(parents=True, exist_ok=True)
                     images_dir = video_dir / "frames"
                     existing_image = next(
-                        images_dir.glob(f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"), None
+                        images_dir.glob(
+                            f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"
+                        ),
+                        None,
                     )
                     if existing_image is not None:
                         yield data_unit_struct, Image.open(existing_image)
                     else:
                         video_file = video_dir / label_row_json["data_title"]
                         download_file(
-                            data_unit_struct.signed_url, project_dir=self._project.project_dir, destination=video_file
+                            data_unit_struct.signed_url,
+                            project_dir=self._project.project_dir,
+                            destination=video_file,
                         )
                         extract_frames(
-                            video_file, images_dir, data_unit_struct.du_hash, data_unit_struct.frames_per_second
+                            video_file,
+                            images_dir,
+                            data_unit_struct.du_hash,
+                            data_unit_struct.frames_per_second,
                         )
-                    downloaded_image = next(images_dir.glob(f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"))
+                    downloaded_image = next(
+                        images_dir.glob(
+                            f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"
+                        )
+                    )
                     yield data_unit_struct, Image.open(downloaded_image)
                 else:
                     raise RuntimeError("Unsupported data type")
@@ -270,7 +307,9 @@ class LabelRowStructure:
         label_row_json = self.get_label_row_json(cache_db=cache_db)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            for data_unit_struct in self.iter_data_unit(data_unit_hash=data_unit_hash, frame=frame, cache_db=cache_db):
+            for data_unit_struct in self.iter_data_unit(
+                data_unit_hash=data_unit_hash, frame=frame, cache_db=cache_db
+            ):
                 if data_unit_struct.data_type in {"img_group", "image"}:
                     yield data_unit_struct, data_unit_struct.signed_url
                 elif data_unit_struct.data_type == "video":
@@ -279,20 +318,36 @@ class LabelRowStructure:
                     video_dir.mkdir(parents=True, exist_ok=True)
                     images_dir = video_dir / "frames"
                     existing_image = next(
-                        images_dir.glob(f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"), None
+                        images_dir.glob(
+                            f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"
+                        ),
+                        None,
                     )
                     if existing_image is not None:
                         yield data_unit_struct, Image.open(existing_image)
                     else:
                         video_file = video_dir / label_row_json["data_title"]
-                        download_file(data_unit_struct.signed_url, project_dir=self._project, destination=video_file)
-                        extract_frames(
-                            video_file, images_dir, data_unit_struct.du_hash, data_unit_struct.frames_per_second
+                        download_file(
+                            data_unit_struct.signed_url,
+                            project_dir=self._project,
+                            destination=video_file,
                         )
-                    downloaded_image = next(images_dir.glob(f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"))
+                        extract_frames(
+                            video_file,
+                            images_dir,
+                            data_unit_struct.du_hash,
+                            data_unit_struct.frames_per_second,
+                        )
+                    downloaded_image = next(
+                        images_dir.glob(
+                            f"{data_unit_struct.du_hash}_{data_unit_struct.frame}.*"
+                        )
+                    )
                     yield data_unit_struct, Image.open(downloaded_image)
                 else:
-                    raise RuntimeError(f"Unsupported data type: {data_unit_struct.data_type}")
+                    raise RuntimeError(
+                        f"Unsupported data type: {data_unit_struct.data_type}"
+                    )
 
 
 # Needed for efficient visualisation, otherwise each session gets a different cache state
@@ -302,12 +357,16 @@ GLOBAL_CACHED_SIGNED_URLS: Dict[str, str] = {}
 class ProjectFileStructure(BaseProjectFileStructure):
     def __init__(self, project_dir: Union[str, Path]):
         super().__init__(project_dir)
-        self._mappings = json.loads(self.mappings.read_text()) if self.mappings.exists() else {}
+        self._mappings = (
+            json.loads(self.mappings.read_text()) if self.mappings.exists() else {}
+        )
         self._cached_project_meta: "Optional[ProjectMeta]" = None
         self.cached_signed_urls: Dict[str, str] = GLOBAL_CACHED_SIGNED_URLS
 
     def cache_clear(self) -> None:
-        self._mappings = json.loads(self.mappings.read_text()) if self.mappings.exists() else {}
+        self._mappings = (
+            json.loads(self.mappings.read_text()) if self.mappings.exists() else {}
+        )
         if self._cached_project_meta is not None:
             self._cached_project_meta = fetch_project_meta(self.project_dir)
 
@@ -339,12 +398,16 @@ class ProjectFileStructure(BaseProjectFileStructure):
     def embeddings(self) -> Path:
         return self.project_dir / "embeddings"
 
-    def get_embedding_index_file(self, embedding_type: EmbeddingType, metric: str) -> Path:
+    def get_embedding_index_file(
+        self, embedding_type: EmbeddingType, metric: str
+    ) -> Path:
         embedding_file = self.get_embeddings_file(embedding_type)
         return embedding_file.parent / f"{embedding_file.stem}_{metric}_index.pkl"
 
     def get_embeddings_file(self, type_: EmbeddingType, reduced: bool = False) -> Path:
-        lookup = EMBEDDING_REDUCED_TO_FILENAME if reduced else EMBEDDING_TYPE_TO_FILENAME
+        lookup = (
+            EMBEDDING_REDUCED_TO_FILENAME if reduced else EMBEDDING_TYPE_TO_FILENAME
+        )
         return self.embeddings / lookup[type_]
 
     @property
@@ -377,7 +440,9 @@ class ProjectFileStructure(BaseProjectFileStructure):
 
     def label_row_structure(self, label_hash: str) -> LabelRowStructure:
         # FIXME - where is this needed?: label_hash = self._mappings.get(label_hash, label_hash)
-        return LabelRowStructure(mappings=self._mappings, label_hash=label_hash, project=self, label_row=None)
+        return LabelRowStructure(
+            mappings=self._mappings, label_hash=label_hash, project=self, label_row=None
+        )
 
     def data_units(
         self,
@@ -391,25 +456,37 @@ class ProjectFileStructure(BaseProjectFileStructure):
         with PrismaConnection(self, cache_db=cache_db) as conn:
             return conn.dataunit.find_many(where=where, include=to_include, take=1)
 
-    def label_rows(self, cache_db: Optional[prisma.Prisma] = None) -> List["prisma.models.LabelRow"]:
+    def label_rows(
+        self, cache_db: Optional[prisma.Prisma] = None
+    ) -> List["prisma.models.LabelRow"]:
         with PrismaConnection(self, cache_db=cache_db) as conn:
             return conn.labelrow.find_many()
 
-    def iter_labels(self, cache_db: Optional[prisma.Prisma] = None) -> Iterator[LabelRowStructure]:
+    def iter_labels(
+        self, cache_db: Optional[prisma.Prisma] = None
+    ) -> Iterator[LabelRowStructure]:
         label_rows = self.label_rows(cache_db=cache_db)
         if len(label_rows) == 0:
             for label_row_legacy in self.data_legacy_folder.iterdir():
                 label_hash = label_row_legacy.name
                 if label_hash.startswith("."):
                     continue
-                yield LabelRowStructure(mappings=self._mappings, label_hash=label_hash, project=self, label_row=None)
+                yield LabelRowStructure(
+                    mappings=self._mappings,
+                    label_hash=label_hash,
+                    project=self,
+                    label_row=None,
+                )
         else:
             for label_row in label_rows:
                 label_hash_opt = label_row.label_hash
                 if label_hash_opt is None:
                     continue
                 yield LabelRowStructure(
-                    mappings=self._mappings, label_hash=label_hash_opt, project=self, label_row=label_row
+                    mappings=self._mappings,
+                    label_hash=label_hash_opt,
+                    project=self,
+                    label_row=label_row,
                 )
 
     @property
@@ -423,9 +500,17 @@ class ProjectFileStructure(BaseProjectFileStructure):
         return hash(self.project_dir)
 
     def __eq__(self, other):
-        return isinstance(other, BaseProjectFileStructure) and other.project_dir == self.project_dir
+        return (
+            isinstance(other, BaseProjectFileStructure)
+            and other.project_dir == self.project_dir
+        )
 
 
 def is_workflow_project(pfs: ProjectFileStructure):
-    label_row_meta: dict[str, dict] = json.loads(pfs.label_row_meta.read_text(encoding="utf-8"))
-    return len(label_row_meta) > 0 and next(iter(label_row_meta.values())).get("workflow_graph_node") is not None
+    label_row_meta: dict[str, dict] = json.loads(
+        pfs.label_row_meta.read_text(encoding="utf-8")
+    )
+    return (
+        len(label_row_meta) > 0
+        and next(iter(label_row_meta.values())).get("workflow_graph_node") is not None
+    )

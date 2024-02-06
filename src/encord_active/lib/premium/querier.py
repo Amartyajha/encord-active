@@ -23,7 +23,9 @@ class Querier:
         self.api_url = os.getenv("PREMIUM_API_URL", "http://localhost:5051")
         self._premium_available: Optional[bool] = None
 
-    def _search_clip(self, query: CLIPQuery, timeout: Optional[float] = None) -> Optional[dict]:
+    def _search_clip(
+        self, query: CLIPQuery, timeout: Optional[float] = None
+    ) -> Optional[dict]:
         endpoint = "search/semantic"
         params = {"project": self._pfs.project_dir.as_posix()}
 
@@ -35,23 +37,37 @@ class Querier:
         data.pop("image")
         ids = set(data.pop("identifiers", []))
 
-        response = requests.post(f"{self.api_url}/{endpoint}", params=params, data=data, files=files, timeout=timeout)
+        response = requests.post(
+            f"{self.api_url}/{endpoint}",
+            params=params,
+            data=data,
+            files=files,
+            timeout=timeout,
+        )
         if response.status_code != 200:
             return None
 
         result = response.json()
         if len(ids):
             result["result_identifiers"] = list(
-                filter(lambda id_value: id_value["identifier"] in ids, result["result_identifiers"])
+                filter(
+                    lambda id_value: id_value["identifier"] in ids,
+                    result["result_identifiers"],
+                )
             )
 
         return result
 
     def post_data(
-        self, endpoint: str = "", data: Optional[dict] = None, timeout: Optional[float] = None
+        self,
+        endpoint: str = "",
+        data: Optional[dict] = None,
+        timeout: Optional[float] = None,
     ) -> Optional[dict]:
         params = {"project": self._pfs.project_dir.as_posix()}
-        response = requests.post(f"{self.api_url}/{endpoint}", params=params, data=data, timeout=timeout)
+        response = requests.post(
+            f"{self.api_url}/{endpoint}", params=params, data=data, timeout=timeout
+        )
         if response.status_code != 200:
             return None
         return response.json()
@@ -61,13 +77,17 @@ class Querier:
         if self._premium_available is None:
             try:
                 self._premium_available = bool(
-                    self.post_data(timeout=float(os.getenv("PREMIUM_API_PING_TIMEOUT", 0.5)))
+                    self.post_data(
+                        timeout=float(os.getenv("PREMIUM_API_PING_TIMEOUT", 0.5))
+                    )
                 )
             except (ConnectionError, ConnectionRefusedError, Exception):
                 pass
         return self._premium_available or False
 
-    def _search_with(self, endpoint: str, query: BaseModel, response_type: Type[T]) -> Optional[T]:
+    def _search_with(
+        self, endpoint: str, query: BaseModel, response_type: Type[T]
+    ) -> Optional[T]:
         res = self.post_data(endpoint, data=query.dict())
         if res is None:
             return res
@@ -82,5 +102,9 @@ class Querier:
     def search_with_code(self, query: TextQuery) -> Optional[CodeSearchResponse]:
         return self._search_with("search/code", query, CodeSearchResponse)
 
-    def search_with_code_on_dataframe(self, query: TextQuery) -> Optional[CodeOnDataFrameSearchResponse]:
-        return self._search_with("search/code_on_dataframe", query, CodeOnDataFrameSearchResponse)
+    def search_with_code_on_dataframe(
+        self, query: TextQuery
+    ) -> Optional[CodeOnDataFrameSearchResponse]:
+        return self._search_with(
+            "search/code_on_dataframe", query, CodeOnDataFrameSearchResponse
+        )

@@ -58,11 +58,19 @@ def load_metric_dataframe(
     :param sorting_key: key by which to sort dataframe (default: "score")
     :return: a pandas data frame with all the scores.
     """
-    df = pd.read_csv(metric.path).sort_values([sorting_key, "identifier"], ascending=True).reset_index()
+    df = (
+        pd.read_csv(metric.path)
+        .sort_values([sorting_key, "identifier"], ascending=True)
+        .reset_index()
+    )
 
     if normalize:
-        min_val = metric.meta.stats.min_value if metric.meta.stats else df["score"].min()
-        max_val = metric.meta.stats.max_value if metric.meta.stats else df["score"].max()
+        min_val = (
+            metric.meta.stats.min_value if metric.meta.stats else df["score"].min()
+        )
+        max_val = (
+            metric.meta.stats.max_value if metric.meta.stats else df["score"].max()
+        )
 
         diff = max_val - min_val
         if diff == 0:  # Avoid dividing by zero
@@ -95,7 +103,9 @@ def get_metric_operation_level(pth: Path) -> str:
     return "O" if object_hashes else "F"
 
 
-def is_valid_annotation_type(metric: MetricMetadata, metric_scope: Optional[MetricScope] = None) -> bool:
+def is_valid_annotation_type(
+    metric: MetricMetadata, metric_scope: Optional[MetricScope] = None
+) -> bool:
     if not metric_scope:
         return True
     elif metric_scope == MetricScope.DATA:
@@ -142,11 +152,16 @@ def load_metric_metadata(meta_pth) -> MetricMetadata:
         return metadata
 
 
-def load_available_metrics(metric_dir: Path, metric_scope: Optional[MetricScope] = None) -> List[MetricData]:
+def load_available_metrics(
+    metric_dir: Path, metric_scope: Optional[MetricScope] = None
+) -> List[MetricData]:
     if not metric_dir.is_dir():
         return []
 
-    paths = natsorted([p for p in metric_dir.iterdir() if p.suffix == ".csv"], key=lambda x: x.stem.split("_", 1)[1])
+    paths = natsorted(
+        [p for p in metric_dir.iterdir() if p.suffix == ".csv"],
+        key=lambda x: x.stem.split("_", 1)[1],
+    )
     levels = list(map(get_metric_operation_level, paths))
 
     meta_data = [load_metric_metadata(f.with_suffix(".meta.json")) for f in paths]
@@ -174,7 +189,9 @@ class AnnotatorInfo(TypedDict):
 
 
 def get_annotator_level_info(df: DataFrame[MetricSchema]) -> dict[str, AnnotatorInfo]:
-    annotator_set: List[str] = natsorted(df[MetricSchema.annotator].dropna().unique().tolist())
+    annotator_set: List[str] = natsorted(
+        df[MetricSchema.annotator].dropna().unique().tolist()
+    )
     annotators: Dict[str, AnnotatorInfo] = {}
     for annotator in annotator_set:
         annotators[annotator] = AnnotatorInfo(
@@ -189,7 +206,8 @@ def get_annotator_level_info(df: DataFrame[MetricSchema]) -> dict[str, Annotator
 def is_multiclass_ontology(ontology: OntologyStructure):
     has_objects = bool(ontology.objects)
     radio_classifications = filter(
-        lambda class_label: class_label.attributes[0].get_property_type() == PropertyType.RADIO,
+        lambda class_label: class_label.attributes[0].get_property_type()
+        == PropertyType.RADIO,
         ontology.classifications,
     )
     num_of_classifications = len(list(radio_classifications))
@@ -197,10 +215,15 @@ def is_multiclass_ontology(ontology: OntologyStructure):
     return (has_objects and num_of_classifications > 0) or (num_of_classifications > 1)
 
 
-def get_embedding_type(annotation_type: Optional[List[AnnotationTypeUnion]]) -> EmbeddingType:
+def get_embedding_type(
+    annotation_type: Optional[List[AnnotationTypeUnion]]
+) -> EmbeddingType:
     if not annotation_type:
         return EmbeddingType.IMAGE
-    elif len(annotation_type) == 1 and annotation_type[0] == AnnotationType.CLASSIFICATION.RADIO:
+    elif (
+        len(annotation_type) == 1
+        and annotation_type[0] == AnnotationType.CLASSIFICATION.RADIO
+    ):
         return EmbeddingType.CLASSIFICATION
     else:
         return EmbeddingType.OBJECT

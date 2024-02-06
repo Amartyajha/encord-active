@@ -25,7 +25,9 @@ def hex_to_rgb(value: str, lighten=0.0) -> Tuple[int, ...]:
     """
     value = value.lstrip("#")
     lv = len(value)
-    color = np.array([int(value[i : i + lv // 3], 16) for i in range(0, lv, lv // 3)], dtype=np.uint8)
+    color = np.array(
+        [int(value[i : i + lv // 3], 16) for i in range(0, lv, lv // 3)], dtype=np.uint8
+    )
 
     color_hsv = cv2.cvtColor(color.reshape((1, 1, 3)), cv2.COLOR_RGB2HSV)
     color_hsv[..., -1] = max(0, min(255, int(color_hsv[..., -1] * (1 + lighten))))

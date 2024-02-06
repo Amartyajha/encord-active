@@ -18,7 +18,9 @@ state: Dict[str, Any] = {}
 
 @print_cli.command(name="encord-projects")
 def print_encord_projects(
-    query: Optional[str] = typer.Option(None, help="Optional fuzzy title filter; SQL syntax."),
+    query: Optional[str] = typer.Option(
+        None, help="Optional fuzzy title filter; SQL syntax."
+    ),
 ):
     """
     Print the mapping between `project_hash`es of your Encord projects and their titles.
@@ -43,7 +45,9 @@ def print_encord_projects(
 @print_cli.command(name="ontology")
 @ensure_project()
 def print_ontology(
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to a local project.", file_okay=False),
+    target: Path = typer.Option(
+        Path.cwd(), "--target", "-t", help="Path to a local project.", file_okay=False
+    ),
 ):
     """
     [bold]Prints[/bold] an ontology mapping between the class name to the `featureNodeHash` JSON format.
@@ -70,16 +74,22 @@ Couldn't identify a project ontology. The reason for this may be that you have a
 
         raise typer.Exit()
 
-    ontology_structure = OntologyStructure.from_dict(json.loads(fs.ontology.read_text()))
+    ontology_structure = OntologyStructure.from_dict(
+        json.loads(fs.ontology.read_text())
+    )
 
     classifications = {
         option.value: hashes.dict()
-        for (hashes, (_, _, option)) in iterate_classification_attribute_options(ontology_structure)
+        for (hashes, (_, _, option)) in iterate_classification_attribute_options(
+            ontology_structure
+        )
     }
 
     objects = {o.name.lower(): o.feature_node_hash for o in ontology_structure.objects}
 
-    json_ontology = json.dumps({"objects": objects, "classifications": classifications}, indent=2)
+    json_ontology = json.dumps(
+        {"objects": objects, "classifications": classifications}, indent=2
+    )
 
     if state.get("json_output"):
         output_file_path = Path("./ontology_output.json").resolve()
@@ -92,8 +102,12 @@ Couldn't identify a project ontology. The reason for this may be that you have a
 @print_cli.command(name="data-mapping")
 @ensure_project()
 def print_data_mapping(
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to a local project.", file_okay=False),
-    limit: int = typer.Option(None, help="Limit the result to the first `limit` data hashes"),
+    target: Path = typer.Option(
+        Path.cwd(), "--target", "-t", help="Path to a local project.", file_okay=False
+    ),
+    limit: int = typer.Option(
+        None, help="Limit the result to the first `limit` data hashes"
+    ),
 ):
     """
     [bold]Prints[/bold] a mapping between `data_hashes` and their corresponding `filename`.
@@ -105,7 +119,10 @@ def print_data_mapping(
         label_row = label_row_structure.label_row_json
         mapping = {
             **mapping,
-            **{data_hash: value["data_title"] for data_hash, value in label_row["data_units"].items()},
+            **{
+                data_hash: value["data_title"]
+                for data_hash, value in label_row["data_units"].items()
+            },
         }
         if limit and len(mapping) > limit:
             break

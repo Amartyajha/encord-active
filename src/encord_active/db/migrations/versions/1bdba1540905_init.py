@@ -24,8 +24,14 @@ def upgrade() -> None:
         sa.Column("custom_metrics", sa.JSON(), nullable=True),
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("project_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("project_description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("project_remote_ssh_key_path", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column(
+            "project_description", sqlmodel.sql.sqltypes.AutoString(), nullable=False
+        ),
+        sa.Column(
+            "project_remote_ssh_key_path",
+            sqlmodel.sql.sqltypes.AutoString(),
+            nullable=True,
+        ),
         sa.PrimaryKeyConstraint("project_hash"),
     )
     op.create_table(
@@ -54,9 +60,15 @@ def upgrade() -> None:
         "active_project_embedding_reduction",
         sa.Column("reduction_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("reduction_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("reduction_description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column(
+            "reduction_description", sqlmodel.sql.sqltypes.AutoString(), nullable=False
+        ),
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
-        sa.Column("reduction_type", sa.Enum("UMAP", name="embeddingreductiontype"), nullable=False),
+        sa.Column(
+            "reduction_type",
+            sa.Enum("UMAP", name="embeddingreductiontype"),
+            nullable=False,
+        ),
         sa.Column("reduction_bytes", sa.LargeBinary(), nullable=False),
         sa.ForeignKeyConstraint(
             ["project_hash"],
@@ -96,7 +108,12 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("tag_hash"),
     )
-    op.create_index(op.f("ix_active_project_tags_project_hash"), "active_project_tags", ["project_hash"], unique=False)
+    op.create_index(
+        op.f("ix_active_project_tags_project_hash"),
+        "active_project_tags",
+        ["project_hash"],
+        unique=False,
+    )
     op.create_table(
         "active_project_data_units",
         sa.Column("objects", sa.JSON(), nullable=True),
@@ -148,11 +165,23 @@ def upgrade() -> None:
         sa.Column("prediction_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
-        sa.Column("feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
+        sa.Column(
+            "feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
-        sa.Column("match_object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=True),
-        sa.Column("match_feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=True),
+        sa.Column(
+            "match_object_hash",
+            sqlmodel.sql.sqltypes.AutoString(length=8),
+            nullable=True,
+        ),
+        sa.Column(
+            "match_feature_hash",
+            sqlmodel.sql.sqltypes.AutoString(length=8),
+            nullable=True,
+        ),
         sa.Column("match_duplicate_iou", sa.Float(), nullable=False),
         sa.Column("iou", sa.Float(), nullable=False),
         sa.Column("metric_width", sa.Integer(), nullable=True),
@@ -172,7 +201,11 @@ def upgrade() -> None:
         sa.Column("metric_label_border_closeness", sa.Float(), nullable=True),
         sa.Column("metric_label_poly_similarity", sa.Float(), nullable=True),
         sa.Column("metric_label_missing_or_broken_tracks", sa.Float(), nullable=True),
-        sa.Column("metric_label_inconsistent_classification_and_track", sa.Float(), nullable=True),
+        sa.Column(
+            "metric_label_inconsistent_classification_and_track",
+            sa.Float(),
+            nullable=True,
+        ),
         sa.Column("metric_label_shape_outlier", sa.Float(), nullable=True),
         sa.Column("metric_label_confidence", sa.Float(), nullable=False),
         sa.Column("metric_custom0", sa.Float(), nullable=True),
@@ -220,10 +253,16 @@ def upgrade() -> None:
         sa.Column("prediction_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("iou_threshold", sa.Float(), nullable=False),
-        sa.Column("feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
-        sa.Column("annotation_email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column(
+            "feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
+        sa.Column(
+            "annotation_email", sqlmodel.sql.sqltypes.AutoString(), nullable=False
+        ),
         sa.Column("annotation_manual", sa.Boolean(), nullable=False),
         sa.Column("metric_width", sa.Integer(), nullable=True),
         sa.Column("metric_height", sa.Integer(), nullable=True),
@@ -242,7 +281,11 @@ def upgrade() -> None:
         sa.Column("metric_label_border_closeness", sa.Float(), nullable=True),
         sa.Column("metric_label_poly_similarity", sa.Float(), nullable=True),
         sa.Column("metric_label_missing_or_broken_tracks", sa.Float(), nullable=True),
-        sa.Column("metric_label_inconsistent_classification_and_track", sa.Float(), nullable=True),
+        sa.Column(
+            "metric_label_inconsistent_classification_and_track",
+            sa.Float(),
+            nullable=True,
+        ),
         sa.Column("metric_label_shape_outlier", sa.Float(), nullable=True),
         sa.Column("metric_label_confidence", sa.Float(), nullable=False),
         sa.Column("metric_custom0", sa.Float(), nullable=True),
@@ -284,9 +327,15 @@ def upgrade() -> None:
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
-        sa.Column("feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
-        sa.Column("annotation_email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
+        sa.Column(
+            "feature_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
+        sa.Column(
+            "annotation_email", sqlmodel.sql.sqltypes.AutoString(), nullable=False
+        ),
         sa.Column("annotation_manual", sa.Boolean(), nullable=False),
         sa.Column("embedding_clip", sa.LargeBinary(), nullable=True),
         sa.Column("embedding_hu", sa.LargeBinary(), nullable=True),
@@ -307,7 +356,11 @@ def upgrade() -> None:
         sa.Column("metric_label_border_closeness", sa.Float(), nullable=True),
         sa.Column("metric_label_poly_similarity", sa.Float(), nullable=True),
         sa.Column("metric_label_missing_or_broken_tracks", sa.Float(), nullable=True),
-        sa.Column("metric_label_inconsistent_classification_and_track", sa.Float(), nullable=True),
+        sa.Column(
+            "metric_label_inconsistent_classification_and_track",
+            sa.Float(),
+            nullable=True,
+        ),
         sa.Column("metric_label_shape_outlier", sa.Float(), nullable=True),
         sa.Column("metric_label_confidence", sa.Float(), nullable=False),
         sa.Column("metric_custom0", sa.Float(), nullable=True),
@@ -586,7 +639,9 @@ def upgrade() -> None:
         sa.Column("prediction_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("annotation_bytes", sa.LargeBinary(), nullable=False),
         sa.Column("embedding_clip", sa.LargeBinary(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -608,7 +663,9 @@ def upgrade() -> None:
         sa.Column("prediction_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("x", sa.Float(), nullable=True),
         sa.Column("y", sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -630,7 +687,9 @@ def upgrade() -> None:
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("reduction_hash", "prediction_hash", "du_hash", "frame", "object_hash"),
+        sa.PrimaryKeyConstraint(
+            "reduction_hash", "prediction_hash", "du_hash", "frame", "object_hash"
+        ),
     )
     op.create_index(
         "active_project_analytics_prediction_reduced_x",
@@ -650,7 +709,9 @@ def upgrade() -> None:
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("embedding_clip", sa.LargeBinary(), nullable=True),
         sa.Column("embedding_hu", sa.LargeBinary(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -672,7 +733,9 @@ def upgrade() -> None:
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("x", sa.Float(), nullable=True),
         sa.Column("y", sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -694,7 +757,9 @@ def upgrade() -> None:
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("reduction_hash", "project_hash", "du_hash", "frame", "object_hash"),
+        sa.PrimaryKeyConstraint(
+            "reduction_hash", "project_hash", "du_hash", "frame", "object_hash"
+        ),
     )
     op.create_index(
         "active_project_analytics_annotation_reduced_x",
@@ -774,7 +839,9 @@ def upgrade() -> None:
         sa.Column("project_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("du_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.Column("frame", sa.Integer(), nullable=False),
-        sa.Column("object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False),
+        sa.Column(
+            "object_hash", sqlmodel.sql.sqltypes.AutoString(length=8), nullable=False
+        ),
         sa.Column("tag_hash", sqlmodel.sql.sqltypes.GUID(), nullable=False),
         sa.ForeignKeyConstraint(
             ["project_hash", "du_hash", "frame", "object_hash"],
@@ -795,7 +862,9 @@ def upgrade() -> None:
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("project_hash", "du_hash", "frame", "object_hash", "tag_hash"),
+        sa.PrimaryKeyConstraint(
+            "project_hash", "du_hash", "frame", "object_hash", "tag_hash"
+        ),
     )
     op.create_index(
         op.f("ix_active_project_tagged_annotation_tag_hash"),
@@ -830,65 +899,144 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("project_hash", "du_hash", "frame", "tag_hash"),
     )
     op.create_index(
-        op.f("ix_active_project_tagged_data_tag_hash"), "active_project_tagged_data", ["tag_hash"], unique=False
+        op.f("ix_active_project_tagged_data_tag_hash"),
+        "active_project_tagged_data",
+        ["tag_hash"],
+        unique=False,
     )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(op.f("ix_active_project_tagged_data_tag_hash"), table_name="active_project_tagged_data")
+    op.drop_index(
+        op.f("ix_active_project_tagged_data_tag_hash"),
+        table_name="active_project_tagged_data",
+    )
     op.drop_table("active_project_tagged_data")
-    op.drop_index(op.f("ix_active_project_tagged_annotation_tag_hash"), table_name="active_project_tagged_annotation")
+    op.drop_index(
+        op.f("ix_active_project_tagged_annotation_tag_hash"),
+        table_name="active_project_tagged_annotation",
+    )
     op.drop_table("active_project_tagged_annotation")
-    op.drop_index("active_project_analytics_data_reduced_y", table_name="active_project_analytics_data_reduced")
-    op.drop_index("active_project_analytics_data_reduced_x", table_name="active_project_analytics_data_reduced")
+    op.drop_index(
+        "active_project_analytics_data_reduced_y",
+        table_name="active_project_analytics_data_reduced",
+    )
+    op.drop_index(
+        "active_project_analytics_data_reduced_x",
+        table_name="active_project_analytics_data_reduced",
+    )
     op.drop_table("active_project_analytics_data_reduced")
     op.drop_table("active_project_analytics_data_extra")
     op.drop_index(
-        "active_project_analytics_annotation_reduced_y", table_name="active_project_analytics_annotation_reduced"
+        "active_project_analytics_annotation_reduced_y",
+        table_name="active_project_analytics_annotation_reduced",
     )
     op.drop_index(
-        "active_project_analytics_annotation_reduced_x", table_name="active_project_analytics_annotation_reduced"
+        "active_project_analytics_annotation_reduced_x",
+        table_name="active_project_analytics_annotation_reduced",
     )
     op.drop_table("active_project_analytics_annotation_reduced")
     op.drop_table("active_project_analytics_annotation_extra")
     op.drop_index(
-        "active_project_analytics_prediction_reduced_y", table_name="active_project_prediction_analytics_reduced"
+        "active_project_analytics_prediction_reduced_y",
+        table_name="active_project_prediction_analytics_reduced",
     )
     op.drop_index(
-        "active_project_analytics_prediction_reduced_x", table_name="active_project_prediction_analytics_reduced"
+        "active_project_analytics_prediction_reduced_x",
+        table_name="active_project_prediction_analytics_reduced",
     )
     op.drop_table("active_project_prediction_analytics_reduced")
     op.drop_table("active_project_prediction_analytics_extra")
-    op.drop_index("active_data_project_hash_metric_width_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_sharpness_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_red_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_random_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_object_density_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_object_count_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_image_singularity_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_image_difficulty_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_height_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_green_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_contrast_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_brightness_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_blue_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_aspect_ratio_index", table_name="active_project_analytics_data")
-    op.drop_index("active_data_project_hash_metric_area_index", table_name="active_project_analytics_data")
     op.drop_index(
-        "active_data_project_hash_metric_annotation_quality_index", table_name="active_project_analytics_data"
+        "active_data_project_hash_metric_width_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_sharpness_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_red_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_random_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_object_density_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_object_count_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_image_singularity_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_image_difficulty_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_height_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_green_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_contrast_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_brightness_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_blue_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_aspect_ratio_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_area_index",
+        table_name="active_project_analytics_data",
+    )
+    op.drop_index(
+        "active_data_project_hash_metric_annotation_quality_index",
+        table_name="active_project_analytics_data",
     )
     op.drop_table("active_project_analytics_data")
-    op.drop_index("active_label_project_hash_metric_width_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_sharpness_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_red_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_random_index", table_name="active_project_analytics_annotation")
     op.drop_index(
-        "active_label_project_hash_metric_label_shape_outlier_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_width_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_index(
-        "active_label_project_hash_metric_label_poly_similarity_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_sharpness_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_red_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_random_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_label_shape_outlier_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_label_poly_similarity_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_index(
         "active_label_project_hash_metric_label_missing_or_broken_tracks_index",
@@ -899,29 +1047,52 @@ def downgrade() -> None:
         table_name="active_project_analytics_annotation",
     )
     op.drop_index(
-        "active_label_project_hash_metric_label_duplicates_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_label_duplicates_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_index(
-        "active_label_project_hash_metric_label_confidence_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_label_confidence_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_index(
         "active_label_project_hash_metric_label_border_closeness_index",
         table_name="active_project_analytics_annotation",
     )
-    op.drop_index("active_label_project_hash_metric_height_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_green_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_contrast_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_brightness_index", table_name="active_project_analytics_annotation")
-    op.drop_index("active_label_project_hash_metric_blue_index", table_name="active_project_analytics_annotation")
     op.drop_index(
-        "active_label_project_hash_metric_aspect_ratio_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_height_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_index(
-        "active_label_project_hash_metric_area_relative_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_green_index",
+        table_name="active_project_analytics_annotation",
     )
-    op.drop_index("active_label_project_hash_metric_area_index", table_name="active_project_analytics_annotation")
     op.drop_index(
-        "active_label_project_hash_metric_annotation_quality_index", table_name="active_project_analytics_annotation"
+        "active_label_project_hash_metric_contrast_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_brightness_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_blue_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_aspect_ratio_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_area_relative_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_area_index",
+        table_name="active_project_analytics_annotation",
+    )
+    op.drop_index(
+        "active_label_project_hash_metric_annotation_quality_index",
+        table_name="active_project_analytics_annotation",
     )
     op.drop_table("active_project_analytics_annotation")
     op.drop_index(
@@ -930,15 +1101,22 @@ def downgrade() -> None:
     )
     op.drop_table("active_project_prediction_analytics_false_negatives")
     op.drop_index(
-        "active_project_prediction_objects_feature_confidence_index", table_name="active_project_prediction_analytics"
+        "active_project_prediction_objects_feature_confidence_index",
+        table_name="active_project_prediction_analytics",
     )
     op.drop_index(
-        "active_project_prediction_objects_confidence_index", table_name="active_project_prediction_analytics"
+        "active_project_prediction_objects_confidence_index",
+        table_name="active_project_prediction_analytics",
     )
     op.drop_table("active_project_prediction_analytics")
-    op.drop_index("active_project_data_units_unique_du_hash_frame", table_name="active_project_data_units")
+    op.drop_index(
+        "active_project_data_units_unique_du_hash_frame",
+        table_name="active_project_data_units",
+    )
     op.drop_table("active_project_data_units")
-    op.drop_index(op.f("ix_active_project_tags_project_hash"), table_name="active_project_tags")
+    op.drop_index(
+        op.f("ix_active_project_tags_project_hash"), table_name="active_project_tags"
+    )
     op.drop_table("active_project_tags")
     op.drop_table("active_project_prediction")
     op.drop_table("active_project_embedding_reduction")

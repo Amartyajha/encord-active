@@ -61,13 +61,17 @@ class EncordActions:
         try:
             original_project_hash = self.project_meta["project_hash"]
         except Exception as e:
-            raise MissingProjectMetaAttribute(e.args[0], self.project_file_structure.project_meta)
+            raise MissingProjectMetaAttribute(
+                e.args[0], self.project_file_structure.project_meta
+            )
 
         try:
             ssh_key_path = Path(self.project_meta["ssh_key_path"]).resolve()
         except Exception as e:
             if not fallback_ssh_key_path:
-                raise MissingProjectMetaAttribute(e.args[0], self.project_file_structure.project_meta)
+                raise MissingProjectMetaAttribute(
+                    e.args[0], self.project_file_structure.project_meta
+                )
             ssh_key_path = fallback_ssh_key_path
 
         if not ssh_key_path.is_file():
@@ -97,24 +101,37 @@ class EncordActions:
         data_unit_hashes: set[str],
         new_lr_data_hash_to_original_mapping: DataHashMapping,
     ) -> Optional[DataHashMapping]:
-        label_row_structure = self.project_file_structure.label_row_structure(label_row_hash)
+        label_row_structure = self.project_file_structure.label_row_structure(
+            label_row_hash
+        )
         label_row_entry = label_row_structure.get_label_row_from_db()
         label_row = label_row_structure.label_row_json
 
         if label_row["data_type"] == DataType.IMAGE.value:
-            data_unit_hash = next(iter(label_row["data_units"]), None)  # There is only one data unit in an image (type)
-            data_unit = next(label_row_structure.iter_data_unit(data_unit_hash=data_unit_hash), None)
-            if data_unit_hash is not None and data_unit_hash in data_unit_hashes and data_unit is not None:
+            # There is only one data unit in an image (type)
+            data_unit_hash = next(iter(label_row["data_units"]), None)
+            data_unit = next(
+                label_row_structure.iter_data_unit(data_unit_hash=data_unit_hash), None
+            )
+            if (
+                data_unit_hash is not None
+                and data_unit_hash in data_unit_hashes
+                and data_unit is not None
+            ):
                 with tempfile.TemporaryDirectory() as td:
                     tf_path = Path(td) / data_unit_hash
                     download_file(
-                        data_unit.signed_url, project_dir=self.project_file_structure.project_dir, destination=tf_path
+                        data_unit.signed_url,
+                        project_dir=self.project_file_structure.project_dir,
+                        destination=tf_path,
                     )
                     new_lr_data_hash = dataset.upload_image(
-                        file_path=tf_path, title=label_row["data_units"][data_unit_hash]["data_title"]
+                        file_path=tf_path,
+                        title=label_row["data_units"][data_unit_hash]["data_title"],
                     )["data_hash"]
                 new_lr_data_hash_to_original_mapping.set(
-                    new_lr_data_hash, label_row.get("data_hash", label_row_entry.data_hash)
+                    new_lr_data_hash,
+                    label_row.get("data_hash", label_row_entry.data_hash),
                 )
                 # The data unit hash and label row data hash of an image (type) are the same
                 new_du_hash_to_original_mapping = DataHashMapping()
@@ -123,13 +140,19 @@ class EncordActions:
 
         elif label_row["data_type"] == DataType.IMG_GROUP.value:
             sorted_data_units: list[dict] = sorted(
-                (_du for _du in label_row["data_units"].values() if _du["data_hash"] in data_unit_hashes),
+                (
+                    _du
+                    for _du in label_row["data_units"].values()
+                    if _du["data_hash"] in data_unit_hashes
+                ),
                 key=lambda _du: int(_du["data_sequence"]),
             )
             dus_with_signed_url = [
                 (_du, _data_unit.signed_url)
                 for _du in sorted_data_units
-                for _data_unit in label_row_structure.iter_data_unit(data_unit_hash=_du["data_hash"])
+                for _data_unit in label_row_structure.iter_data_unit(
+                    data_unit_hash=_du["data_hash"]
+                )
             ]
 
             if len(dus_with_signed_url) > 0:
@@ -140,7 +163,8 @@ class EncordActions:
                         download_file(
                             signed_url,
                             project_dir=self.project_file_structure.project_dir,
-                            destination=tmp_path / f"{_du['data_title'].replace('/', ':')}",
+                            destination=tmp_path
+                            / f"{_du['data_title'].replace('/', ':')}",
                             # replace the '/' for ':' in the data unit title to avoid confusing the destination path
                         ).as_posix()
                         for _du, signed_url in dus_with_signed_url
@@ -149,36 +173,62 @@ class EncordActions:
                     # Reverse the image paths because of the undocumented behaviour of `dataset.create_image_group()`
                     # which creates the image group with the images in the reversed order
                     image_paths = list(reversed(image_paths))
-                    dataset.create_image_group(file_paths=image_paths, title=label_row["data_title"])
+                    dataset.create_image_group(
+                        file_paths=image_paths, title=label_row["data_title"]
+                    )
                 # Since `create_image_group()` does not return info related to the uploaded images,
                 # we need to find the data hash of the image group in a hacky way
-                new_data_row: DataRow = _find_new_data_row(dataset, new_lr_data_hash_to_original_mapping)
-                new_lr_data_hash_to_original_mapping.set(new_data_row.uid, label_row["data_hash"])
+                new_data_row: DataRow = _find_new_data_row(
+                    dataset, new_lr_data_hash_to_original_mapping
+                )
+                new_lr_data_hash_to_original_mapping.set(
+                    new_data_row.uid, label_row["data_hash"]
+                )
 
                 # Obtain the data unit hashes of the images contained in the image group
-                new_data_row.refetch_data(images_data_fetch_options=ImagesDataFetchOptions(fetch_signed_urls=False))
+                new_data_row.refetch_data(
+                    images_data_fetch_options=ImagesDataFetchOptions(
+                        fetch_signed_urls=False
+                    )
+                )
                 new_du_hash_to_original_mapping = DataHashMapping()
                 for i, du in enumerate(sorted_data_units):
                     image_data = new_data_row.images_data[i]
-                    new_du_hash_to_original_mapping.set(image_data.image_hash, du["data_hash"])
+                    new_du_hash_to_original_mapping.set(
+                        image_data.image_hash, du["data_hash"]
+                    )
                 return new_du_hash_to_original_mapping
 
         elif label_row["data_type"] == DataType.VIDEO.value:
-            data_unit_hash = next(iter(label_row["data_units"]), None)  # There is only one data unit in a video (type)
-            data_unit = next(label_row_structure.iter_data_unit(data_unit_hash=data_unit_hash), None)
-            if data_unit_hash is not None and data_unit_hash in data_unit_hashes and data_unit is not None:
+            # There is only one data unit in a video (type)
+            data_unit_hash = next(iter(label_row["data_units"]), None)
+            data_unit = next(
+                label_row_structure.iter_data_unit(data_unit_hash=data_unit_hash), None
+            )
+            if (
+                data_unit_hash is not None
+                and data_unit_hash in data_unit_hashes
+                and data_unit is not None
+            ):
                 with tempfile.TemporaryDirectory() as td:
                     tf_path = Path(td) / data_unit_hash
                     download_file(
-                        data_unit.signed_url, project_dir=self.project_file_structure.project_dir, destination=tf_path
+                        data_unit.signed_url,
+                        project_dir=self.project_file_structure.project_dir,
+                        destination=tf_path,
                     )
                     dataset.upload_video(
-                        file_path=str(tf_path), title=label_row["data_units"][data_unit_hash]["data_title"]
+                        file_path=str(tf_path),
+                        title=label_row["data_units"][data_unit_hash]["data_title"],
                     )
                 # Since `upload_video()` does not return info related to the uploaded video,
                 # we need to find the data hash of the video in a hacky way
-                new_data_row = _find_new_data_row(dataset, new_lr_data_hash_to_original_mapping)
-                new_lr_data_hash_to_original_mapping.set(new_data_row.uid, label_row["data_hash"])
+                new_data_row = _find_new_data_row(
+                    dataset, new_lr_data_hash_to_original_mapping
+                )
+                new_lr_data_hash_to_original_mapping.set(
+                    new_data_row.uid, label_row["data_hash"]
+                )
 
                 # The data unit hash and label row data hash of a video (type) are the same
                 new_du_hash_to_original_mapping = DataHashMapping()
@@ -186,7 +236,9 @@ class EncordActions:
                 return new_du_hash_to_original_mapping
 
         else:
-            raise Exception(f'Undefined data type {label_row["data_type"]} for label_row={label_row["label_hash"]}')
+            raise Exception(
+                f'Undefined data type {label_row["data_type"]} for label_row={label_row["label_hash"]}'
+            )
 
         return None  # No data unit in the label row matched those in `data_unit_hashes`
 
@@ -209,21 +261,29 @@ class EncordActions:
             dataset_type=StorageLocation.CORD_STORAGE,
             dataset_description=dataset_description,
         )
-        dataset_hash: str = self.user_client.get_datasets(title_eq=dataset_title)[0]["dataset"].dataset_hash
+        dataset_hash: str = self.user_client.get_datasets(title_eq=dataset_title)[0][
+            "dataset"
+        ].dataset_hash
         dataset: Dataset = self.user_client.get_dataset(dataset_hash)
 
         # The following operation is for image groups (to upload them efficiently)
         label_hash_to_data_units: dict[str, set] = {}
         for identifier, item in tqdm(dataset_df.iterrows(), total=dataset_df.shape[0]):
             label_row_hash, data_unit_hash, *_ = str(identifier).split("_")
-            label_hash_to_data_units.setdefault(label_row_hash, set()).add(data_unit_hash)
+            label_hash_to_data_units.setdefault(label_row_hash, set()).add(
+                data_unit_hash
+            )
 
-        total_amount_of_data_units: int = sum(map(len, label_hash_to_data_units.values()))
+        total_amount_of_data_units: int = sum(
+            map(len, label_hash_to_data_units.values())
+        )
         current_number_of_uploaded_data_units: int = 0
         new_du_hash_to_original_mapping = DataHashMapping()
         new_lr_data_hash_to_original_mapping = DataHashMapping()
         for label_row_hash, data_hashes in label_hash_to_data_units.items():
-            output_new_du_hash_to_original_mapping: Optional[DataHashMapping] = try_execute(
+            output_new_du_hash_to_original_mapping: Optional[
+                DataHashMapping
+            ] = try_execute(
                 self._upload_label_row,
                 5,
                 {
@@ -236,17 +296,26 @@ class EncordActions:
             if output_new_du_hash_to_original_mapping is None:
                 raise Exception("Data upload failed")
 
-            for new_data_unit_hash, data_unit_hash in output_new_du_hash_to_original_mapping.items():
-                new_du_to_original[new_data_unit_hash] = LabelRowDataUnit(label_row_hash, data_unit_hash)
-                # TODO: check if lrdu_mapping without label row's data hash works ok for image groups (old behaviour)
-                lrdu_mapping[LabelRowDataUnit(label_row_hash, data_unit_hash)] = LabelRowDataUnit(
-                    "", new_data_unit_hash
+            for (
+                new_data_unit_hash,
+                data_unit_hash,
+            ) in output_new_du_hash_to_original_mapping.items():
+                new_du_to_original[new_data_unit_hash] = LabelRowDataUnit(
+                    label_row_hash, data_unit_hash
                 )
+                # TODO: check if lrdu_mapping without label row's data hash works ok for image groups (old behaviour)
+                lrdu_mapping[
+                    LabelRowDataUnit(label_row_hash, data_unit_hash)
+                ] = LabelRowDataUnit("", new_data_unit_hash)
 
             # Update global data unit mapping and advance progress bar
-            new_du_hash_to_original_mapping.update(output_new_du_hash_to_original_mapping)
+            new_du_hash_to_original_mapping.update(
+                output_new_du_hash_to_original_mapping
+            )
             if progress_callback:
-                progress_callback(len(new_du_hash_to_original_mapping) / total_amount_of_data_units)
+                progress_callback(
+                    len(new_du_hash_to_original_mapping) / total_amount_of_data_units
+                )
 
         return DatasetCreationResult(
             dataset_hash,
@@ -257,19 +326,30 @@ class EncordActions:
         )
 
     def create_ontology(self, title: str, description: str):
-        ontology_dict = json.loads(self.project_file_structure.ontology.read_text(encoding="utf-8"))
+        ontology_dict = json.loads(
+            self.project_file_structure.ontology.read_text(encoding="utf-8")
+        )
         ontology_structure = OntologyStructure.from_dict(ontology_dict)
-        return self.user_client.create_ontology(title, structure=ontology_structure, description=description)
+        return self.user_client.create_ontology(
+            title, structure=ontology_structure, description=description
+        )
 
     @staticmethod
     def prepare_label_row(
-        original_label_row: LabelRow, new_label_row: LabelRow, new_label_row_data_unit_hash: str, original_du: str
+        original_label_row: LabelRow,
+        new_label_row: LabelRow,
+        new_label_row_data_unit_hash: str,
+        original_du: str,
     ) -> LabelRow:
         if new_label_row["data_type"] in [DataType.IMAGE.value, DataType.VIDEO.value]:
             original_labels = original_label_row["data_units"][original_du]["labels"]
-            new_label_row["data_units"][new_label_row_data_unit_hash]["labels"] = original_labels
+            new_label_row["data_units"][new_label_row_data_unit_hash][
+                "labels"
+            ] = original_labels
             new_label_row["object_answers"] = original_label_row["object_answers"]
-            new_label_row["classification_answers"] = original_label_row["classification_answers"]
+            new_label_row["classification_answers"] = original_label_row[
+                "classification_answers"
+            ]
 
         elif new_label_row["data_type"] == DataType.IMG_GROUP.value:
             object_hashes: set[str] = set()
@@ -278,15 +358,24 @@ class EncordActions:
             # Currently img_groups are matched using data_title, it should be fixed after SDK update
             for data_unit in new_label_row["data_units"].values():
                 for original_data in original_label_row["data_units"].values():
-                    if original_data["data_hash"] == data_unit["data_title"].split(".")[0]:
+                    if (
+                        original_data["data_hash"]
+                        == data_unit["data_title"].split(".")[0]
+                    ):
                         data_unit["labels"] = original_data["labels"]
                         for obj in data_unit["labels"].get("objects", []):
                             object_hashes.add(obj["objectHash"])
-                        for classification in data_unit["labels"].get("classifications", []):
-                            classification_hashes.add(classification["classificationHash"])
+                        for classification in data_unit["labels"].get(
+                            "classifications", []
+                        ):
+                            classification_hashes.add(
+                                classification["classificationHash"]
+                            )
 
             new_label_row["object_answers"] = original_label_row["object_answers"]
-            new_label_row["classification_answers"] = original_label_row["classification_answers"]
+            new_label_row["classification_answers"] = original_label_row[
+                "classification_answers"
+            ]
 
             # Remove unused object/classification answers
             for object_hash in object_hashes:
@@ -321,7 +410,9 @@ class EncordActions:
         for counter, new_label_row_metadata in enumerate(new_project.label_rows):
             new_lr_data_hash = new_label_row_metadata["data_hash"]
             new_label_row = new_project.create_label_row(new_lr_data_hash)
-            original_lr_du = dataset_creation_result.du_original_mapping[new_lr_data_hash]
+            original_lr_du = dataset_creation_result.du_original_mapping[
+                new_lr_data_hash
+            ]
 
             dataset_creation_result.lr_du_mapping[original_lr_du] = LabelRowDataUnit(
                 new_label_row["label_hash"], new_lr_data_hash
@@ -330,13 +421,21 @@ class EncordActions:
                 original_lr_du.label_row
             ).label_row_json
             label_row = self.prepare_label_row(
-                original_label_row, new_label_row, new_lr_data_hash, original_lr_du.data_unit
+                original_label_row,
+                new_label_row,
+                new_lr_data_hash,
+                original_lr_du.data_unit,
             )
             if any(
-                data_unit["labels"].get("objects", []) or data_unit["labels"].get("classifications", [])
+                data_unit["labels"].get("objects", [])
+                or data_unit["labels"].get("classifications", [])
                 for data_unit in label_row["data_units"].values()
             ):
-                try_execute(new_project.save_label_row, 5, {"uid": label_row["label_hash"], "label": label_row})
+                try_execute(
+                    new_project.save_label_row,
+                    5,
+                    {"uid": label_row["label_hash"], "label": label_row},
+                )
 
             # Unconditionally store locally the remapped label hash (needed for correct database migration)
             label_row_json_map[label_row["label_hash"]] = json.dumps(label_row)
@@ -353,12 +452,16 @@ class EncordActions:
 
         # Reverse ordering : correct data unit hash mapping data
         data_hash_mapping = DataHashMapping()
-        for new_du, old_du in dataset_creation_result.new_du_hash_to_original_mapping.items():
+        for (
+            new_du,
+            old_du,
+        ) in dataset_creation_result.new_du_hash_to_original_mapping.items():
             data_hash_mapping.set(old_du, new_du)
 
         replace_uids(
             self.project_file_structure,
-            dataset_creation_result.lr_du_mapping,  # FIXME: needs to be updated to work correctly for non-images
+            # FIXME: needs to be updated to work correctly for non-images
+            dataset_creation_result.lr_du_mapping,
             data_hash_mapping,
             old_project_hash,
             new_project.project_hash,
@@ -368,7 +471,8 @@ class EncordActions:
         replace_db_uids(
             self.project_file_structure,
             data_hash_mapping,
-            dataset_creation_result.lr_du_mapping,  # FIXME: needs to be updated to work correctly for non-images
+            # FIXME: needs to be updated to work correctly for non-images
+            dataset_creation_result.lr_du_mapping,
             label_row_json_map,
         )
 
@@ -394,18 +498,24 @@ class EncordActions:
         try:
             ids_df = filtered_df["identifier"].str.split("_", n=4, expand=True)
             filtered_lr_du = {
-                LabelRowDataUnit(label_row, data_unit) for label_row, data_unit in zip(ids_df[0], ids_df[1])
+                LabelRowDataUnit(label_row, data_unit)
+                for label_row, data_unit in zip(ids_df[0], ids_df[1])
             }
             filtered_label_rows = {lr_du.label_row for lr_du in filtered_lr_du}
             filtered_data_hashes = {lr_du.data_unit for lr_du in filtered_lr_du}
             filtered_labels = {
-                (ids[1][0], ids[1][1], ids[1][3] if len(ids[1]) > 3 else None) for ids in ids_df.iterrows()
+                (ids[1][0], ids[1][1], ids[1][3] if len(ids[1]) > 3 else None)
+                for ids in ids_df.iterrows()
             }
 
             create_filtered_db(target_project_dir, filtered_df)
 
             if curr_project_structure.image_data_unit.exists():
-                copy_image_data_unit_json(curr_project_structure, target_project_structure, filtered_data_hashes)
+                copy_image_data_unit_json(
+                    curr_project_structure,
+                    target_project_structure,
+                    filtered_data_hashes,
+                )
 
             filtered_label_row_meta = copy_label_row_meta_json(
                 curr_project_structure, target_project_structure, filtered_label_rows
@@ -413,11 +523,20 @@ class EncordActions:
 
             label_rows = {label_row for label_row in filtered_label_row_meta.keys()}
 
-            shutil.copy2(curr_project_structure.ontology, target_project_structure.ontology)
+            shutil.copy2(
+                curr_project_structure.ontology, target_project_structure.ontology
+            )
 
-            copy_project_meta(curr_project_structure, target_project_structure, project_title, project_description)
+            copy_project_meta(
+                curr_project_structure,
+                target_project_structure,
+                project_title,
+                project_description,
+            )
 
-            create_filtered_metrics(curr_project_structure, target_project_structure, filtered_df)
+            create_filtered_metrics(
+                curr_project_structure, target_project_structure, filtered_df
+            )
 
             ensure_safe_project(target_project_structure.project_dir)
             copy_filtered_data(
@@ -429,7 +548,11 @@ class EncordActions:
             )
 
             create_filtered_embeddings(
-                curr_project_structure, target_project_structure, filtered_label_rows, filtered_data_hashes, filtered_df
+                curr_project_structure,
+                target_project_structure,
+                filtered_label_rows,
+                filtered_data_hashes,
+                filtered_df,
             )
 
             if remote_copy:
@@ -472,7 +595,9 @@ class EncordActions:
                 action=CopyDatasetAction.CLONE,
                 dataset_title=dataset_title,
                 dataset_description=dataset_description,
-                datasets_to_data_hashes_map={k: list(v) for k, v in dataset_hash_map.items()},
+                datasets_to_data_hashes_map={
+                    k: list(v) for k, v in dataset_hash_map.items()
+                },
             ),
             copy_labels=CopyLabelsOptions(
                 accepted_label_statuses=[state for state in ReviewApprovalState],
@@ -481,9 +606,12 @@ class EncordActions:
         )
         cloned_project = self.user_client.get_project(cloned_project_hash)
         cloned_project_label_rows = [
-            cloned_project.get_label_row(src_row.label_hash) for src_row in cloned_project.list_label_rows_v2()
+            cloned_project.get_label_row(src_row.label_hash)
+            for src_row in cloned_project.list_label_rows_v2()
         ]
-        filtered_du_lr_mapping = {lrdu.data_unit: lrdu.label_row for lrdu in filtered_lr_du}
+        filtered_du_lr_mapping = {
+            lrdu.data_unit: lrdu.label_row for lrdu in filtered_lr_du
+        }
 
         def _get_one_data_unit(lr: dict, valid_data_units: dict) -> str:
             data_units = lr["data_units"]
@@ -506,11 +634,16 @@ class EncordActions:
         with PrismaConnection(target_project_structure) as conn:
             original_label_rows = conn.labelrow.find_many()
         original_label_row_map = {
-            original_label_row.label_hash: json.loads(original_label_row.label_row_json or "")
+            original_label_row.label_hash: json.loads(
+                original_label_row.label_row_json or ""
+            )
             for original_label_row in original_label_rows
         }
 
-        new_label_row_map = {label_row["label_hash"]: label_row for label_row in cloned_project_label_rows}
+        new_label_row_map = {
+            label_row["label_hash"]: label_row
+            for label_row in cloned_project_label_rows
+        }
 
         label_row_json_map = {}
         for (old_lr, old_du), (new_lr, new_du) in lr_du_mapping.items():
@@ -539,8 +672,10 @@ class EncordActions:
         replace_db_uids(
             target_project_structure,
             du_hash_map=DataHashMapping(),  # Preserved and used as migration key
-            lr_du_mapping=lr_du_mapping,  # Update label hash and lr_dr hashes ( label hash)
-            label_row_json_map=label_row_json_map,  # Update label row jsons to correct value.
+            # Update label hash and lr_dr hashes ( label hash)
+            lr_du_mapping=lr_du_mapping,
+            # Update label row jsons to correct value.
+            label_row_json_map=label_row_json_map,
         )
 
         return cloned_project_hash
@@ -605,7 +740,9 @@ def replace_db_uids(
                 batcher.labelrow.update(
                     where={"label_hash": old_lr},
                     data=LabelRowUpdateInput(
-                        data_hash=new_du, label_hash=new_lr, label_row_json=label_row_json_map[new_lr]
+                        data_hash=new_du,
+                        label_hash=new_lr,
+                        label_row_json=label_row_json_map[new_lr],
                     ),
                 )
     if refresh:

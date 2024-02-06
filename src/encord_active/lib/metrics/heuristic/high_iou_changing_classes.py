@@ -62,7 +62,9 @@ track-ids, they will be flagged as potential inconsistencies in tracks.
         self.threshold = threshold
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_sequence = False
         found_any = False
         found_valid = False
@@ -73,12 +75,19 @@ track-ids, they will be flagged as potential inconsistencies in tracks.
         for data_unit, _ in iterator.iterate(desc="Looking for overlapping objects"):
             label_row = iterator.label_rows[iterator.label_hash]
             data_type = label_row["data_type"]
-            if not (data_type == "video" or (data_type == "img_group" and len(label_row["data_units"]) > 1)):
+            if not (
+                data_type == "video"
+                or (data_type == "img_group" and len(label_row["data_units"]) > 1)
+            ):
                 # Not a sequence
                 continue
             found_sequence = True
 
-            objects = [o for o in data_unit["labels"].get("objects", []) if o["shape"] in valid_annotation_types]
+            objects = [
+                o
+                for o in data_unit["labels"].get("objects", [])
+                if o["shape"] in valid_annotation_types
+            ]
             polygons = list(map(get_polygon, objects))
             found_any |= len(polygons) > 0
 
@@ -112,7 +121,10 @@ track-ids, they will be flagged as potential inconsistencies in tracks.
                 prev_object = previous_objects[best_idx]
                 if prev_object["objectHash"] == obj["objectHash"]:
                     writer.write(1.0, obj)
-                elif best_iou > self.threshold and prev_object["featureHash"] != obj["featureHash"]:
+                elif (
+                    best_iou > self.threshold
+                    and prev_object["featureHash"] != obj["featureHash"]
+                ):
                     # Overlapping objects with different classes
                     writer.write(
                         1 - best_iou,
@@ -120,7 +132,10 @@ track-ids, they will be flagged as potential inconsistencies in tracks.
                         description=f"`{obj['name']}` in frame {iterator.frame} overlaps with "
                         f"`{prev_object['name']}` in frame {iterator.frame - 1}",
                     )
-                elif best_iou > self.threshold and prev_object["featureHash"] == obj["featureHash"]:
+                elif (
+                    best_iou > self.threshold
+                    and prev_object["featureHash"] == obj["featureHash"]
+                ):
                     writer.write(
                         1 - best_iou,
                         obj,

@@ -14,7 +14,11 @@ def _traverse_options(options, out: set[str]):
 
 def _get_nested_attribute_hashes(obj, out: set[str]):
     attr_name = (
-        "attributes" if hasattr(obj, "attributes") else "nested_options" if hasattr(obj, "nested_options") else None
+        "attributes"
+        if hasattr(obj, "attributes")
+        else "nested_options"
+        if hasattr(obj, "nested_options")
+        else None
     )
     if not attr_name:
         return

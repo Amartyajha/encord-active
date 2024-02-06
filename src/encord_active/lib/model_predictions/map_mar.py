@@ -140,7 +140,10 @@ def compute_mAP_and_mAR(
     recalls = []
 
     _tps = np.zeros((model_predictions.shape[0],), dtype=bool)
-    reasons = [f"No overlapping label of class `{class_map[str(i)]['name']}`." for i in pred_class_list]
+    reasons = [
+        f"No overlapping label of class `{class_map[str(i)]['name']}`."
+        for i in pred_class_list
+    ]
     _fns = np.zeros((labels.shape[0],), dtype=bool)
 
     pred_img_ids = set(model_predictions["img_id"])
@@ -150,7 +153,10 @@ def compute_mAP_and_mAR(
     for class_id in class_map:
         if ignore_unmatched_frames:
             nb_labels = sum(
-                [len([t for t in l if t["lidx"] in label_include_ids]) for l in gt_matched.get(class_id, {}).values()]
+                [
+                    len([t for t in l if t["lidx"] in label_include_ids])
+                    for l in gt_matched.get(class_id, {}).values()
+                ]
             )
         else:
             nb_labels = sum([len(l) for l in gt_matched.get(class_id, {}).values()])
@@ -158,7 +164,8 @@ def compute_mAP_and_mAR(
         if nb_labels == 0:
             continue
 
-        class_idx_map[cidx] = class_id  # Keep track of the order of the output lists
+        # Keep track of the order of the output lists
+        class_idx_map[cidx] = class_id
         pred_select = pred_class_list == int(class_id)
         if pred_select.sum() == 0:
             precisions.append(np.zeros(rec_thresholds.shape))
@@ -167,10 +174,16 @@ def compute_mAP_and_mAR(
             continue
 
         class_level_to_full_list_idx = full_index_list[pred_select]
-        full_list_to_class_level_idx: Dict[int, int] = {v.item(): i for i, v in enumerate(class_level_to_full_list_idx)}
+        full_list_to_class_level_idx: Dict[int, int] = {
+            v.item(): i for i, v in enumerate(class_level_to_full_list_idx)
+        }
 
         _ious = ious[pred_select]
-        TP_candidates = set(class_level_to_full_list_idx[_ious >= (iou_threshold or 0.5)].astype(int).tolist())
+        TP_candidates = set(
+            class_level_to_full_list_idx[_ious >= (iou_threshold or 0.5)]
+            .astype(int)
+            .tolist()
+        )
         TP = np.zeros(_ious.shape[0])
 
         for img_label_matches in gt_matched[class_id].values():
@@ -178,7 +191,9 @@ def compute_mAP_and_mAR(
                 found_one = False
                 for tp_idx in label_match["pidxs"]:
                     if found_one:
-                        reasons[tp_idx] = "Prediction with higher confidence already matched label."
+                        reasons[
+                            tp_idx
+                        ] = "Prediction with higher confidence already matched label."
                     elif tp_idx in TP_candidates:
                         TP[full_list_to_class_level_idx[tp_idx]] = 1
                         _tps[tp_idx] = True
@@ -207,7 +222,9 @@ def compute_mAP_and_mAR(
             pr += diff
 
         inds = np.searchsorted(rc, rec_thresholds, side="left")
-        num_inds = inds.argmax() if inds.max() >= TP.shape[0] else rec_thresholds.shape[0]
+        num_inds = (
+            inds.argmax() if inds.max() >= TP.shape[0] else rec_thresholds.shape[0]
+        )
         inds = inds[:num_inds]  # type: ignore
         prec[:num_inds] = pr[inds]  # type: ignore
 
@@ -221,12 +238,20 @@ def compute_mAP_and_mAR(
         ["mAP", np.mean(_precisions.mean(axis=1)).item(), "Mean"],
     ]
     metrics += [
-        [f"AP_{class_map[class_id]['name']}", _precisions[cidx].mean().item(), class_map[class_id]["name"]]
+        [
+            f"AP_{class_map[class_id]['name']}",
+            _precisions[cidx].mean().item(),
+            class_map[class_id]["name"],
+        ]
         for cidx, class_id in class_idx_map.items()
     ]
     metrics += [["mAR", np.mean(recalls).item(), "Mean"]]
     metrics += [
-        [f"AR_{class_map[class_id]['name']}", recalls[cidx].item(), class_map[class_id]["name"]]
+        [
+            f"AR_{class_map[class_id]['name']}",
+            recalls[cidx].item(),
+            class_map[class_id]["name"],
+        ]
         for cidx, class_id in class_idx_map.items()
     ]
     metrics_df = pd.DataFrame(metrics, columns=["metric", "value", "class_name"]).pipe(
@@ -237,8 +262,12 @@ def compute_mAP_and_mAR(
     columns = ["precision", "recall", "class_name"]
     for cidx, class_id in class_idx_map.items():
         for rc_idx, rc_threshold in enumerate(rec_thresholds):
-            prec_data.append([_precisions[cidx, rc_idx], rc_threshold, class_map[class_id]["name"]])
-    pr_df = pd.DataFrame(prec_data, columns=columns).pipe(DataFrame[PrecisionRecallSchema])
+            prec_data.append(
+                [_precisions[cidx, rc_idx], rc_threshold, class_map[class_id]["name"]]
+            )
+    pr_df = pd.DataFrame(prec_data, columns=columns).pipe(
+        DataFrame[PrecisionRecallSchema]
+    )
 
     model_predictions[PredictionMatchSchema.is_true_positive] = _tps.astype(float)
     model_predictions[PredictionMatchSchema.false_positive_reason] = reasons

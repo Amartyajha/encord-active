@@ -18,7 +18,9 @@ def fill_metrics_meta_with_builtin_metrics(metrics_meta: Optional[dict] = None):
     return metrics_meta
 
 
-def get_metric_metadata(metric: Union[Metric, SimpleMetric], module_path: Optional[Path] = None) -> dict:
+def get_metric_metadata(
+    metric: Union[Metric, SimpleMetric], module_path: Optional[Path] = None
+) -> dict:
     metric_meta = metric.metadata.dict()
     if module_path is not None:
         metric_meta["location"] = module_path.as_posix()
@@ -44,7 +46,9 @@ def get_metrics(
     # can be improved using module.__getattribute__(class_name)
     metrics = []
     for metric_name, module_path in modules:
-        module_metrics = get_module_metrics(module_path, lambda x: x.metadata.title == metric_name and filter_func(x))
+        module_metrics = get_module_metrics(
+            module_path, lambda x: x.metadata.title == metric_name and filter_func(x)
+        )
         if module_metrics is None:
             continue
         metrics.extend(module_metrics)

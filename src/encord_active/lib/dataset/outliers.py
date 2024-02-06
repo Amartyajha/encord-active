@@ -66,11 +66,18 @@ def get_iqr_outliers(
     IQR = Q3 - Q1
 
     df[_COLUMNS.dist_to_iqr] = 0
-    df.loc[df[_COLUMNS.score] > Q3, _COLUMNS.dist_to_iqr] = (df[_COLUMNS.score] - Q3).abs()
-    df.loc[df[_COLUMNS.score] < Q1, _COLUMNS.dist_to_iqr] = (df[_COLUMNS.score] - Q1).abs()
+    df.loc[df[_COLUMNS.score] > Q3, _COLUMNS.dist_to_iqr] = (
+        df[_COLUMNS.score] - Q3
+    ).abs()
+    df.loc[df[_COLUMNS.score] < Q1, _COLUMNS.dist_to_iqr] = (
+        df[_COLUMNS.score] - Q1
+    ).abs()
     df.sort_values(by=_COLUMNS.dist_to_iqr, inplace=True, ascending=False)
 
-    moderate_lb, moderate_ub = Q1 - moderate_iqr_scale * IQR, Q3 + moderate_iqr_scale * IQR
+    moderate_lb, moderate_ub = (
+        Q1 - moderate_iqr_scale * IQR,
+        Q3 + moderate_iqr_scale * IQR,
+    )
     severe_lb, severe_ub = Q1 - severe_iqr_scale * IQR, Q3 + severe_iqr_scale * IQR
 
     df[_COLUMNS.outliers_status] = Severity.low
@@ -80,7 +87,8 @@ def get_iqr_outliers(
         _COLUMNS.outliers_status,
     ] = Severity.moderate
     df.loc[
-        (df[_COLUMNS.score] < severe_lb) | (df[_COLUMNS.score] > severe_ub), _COLUMNS.outliers_status
+        (df[_COLUMNS.score] < severe_lb) | (df[_COLUMNS.score] > severe_ub),
+        _COLUMNS.outliers_status,
     ] = Severity.severe
 
     n_moderate_outliers = (
@@ -88,14 +96,23 @@ def get_iqr_outliers(
         | ((severe_ub >= df[_COLUMNS.score]) & (df[_COLUMNS.score] > moderate_ub))
     ).sum()
 
-    n_severe_outliers = ((df[_COLUMNS.score] < severe_lb) | (df[_COLUMNS.score] > severe_ub)).sum()
+    n_severe_outliers = (
+        (df[_COLUMNS.score] < severe_lb) | (df[_COLUMNS.score] > severe_ub)
+    ).sum()
 
     return df.pipe(DataFrame[MetricWithDistanceSchema]), IqrOutliers(
-        n_moderate_outliers, n_severe_outliers, moderate_lb, moderate_ub, severe_lb, severe_ub
+        n_moderate_outliers,
+        n_severe_outliers,
+        moderate_lb,
+        moderate_ub,
+        severe_lb,
+        severe_ub,
     )
 
 
-def get_all_metrics_outliers(metrics_data_summary: MetricsSeverity) -> DataFrame[AllMetricsOutlierSchema]:
+def get_all_metrics_outliers(
+    metrics_data_summary: MetricsSeverity
+) -> DataFrame[AllMetricsOutlierSchema]:
     all_metrics_outliers = pd.DataFrame(
         columns=[
             AllMetricsOutlierSchema.metric_name,
@@ -110,14 +127,22 @@ def get_all_metrics_outliers(metrics_data_summary: MetricsSeverity) -> DataFrame
                 pd.DataFrame(
                     {
                         AllMetricsOutlierSchema.metric_name: [item.metric.name],
-                        AllMetricsOutlierSchema.total_severe_outliers: [item.iqr_outliers.n_severe_outliers],
-                        AllMetricsOutlierSchema.total_moderate_outliers: [item.iqr_outliers.n_moderate_outliers],
+                        AllMetricsOutlierSchema.total_severe_outliers: [
+                            item.iqr_outliers.n_severe_outliers
+                        ],
+                        AllMetricsOutlierSchema.total_moderate_outliers: [
+                            item.iqr_outliers.n_moderate_outliers
+                        ],
                     }
                 ),
             ],
             axis=0,
         )
 
-    all_metrics_outliers.sort_values(by=[AllMetricsOutlierSchema.total_severe_outliers], ascending=False, inplace=True)
+    all_metrics_outliers.sort_values(
+        by=[AllMetricsOutlierSchema.total_severe_outliers],
+        ascending=False,
+        inplace=True,
+    )
 
     return all_metrics_outliers.pipe(DataFrame[AllMetricsOutlierSchema])

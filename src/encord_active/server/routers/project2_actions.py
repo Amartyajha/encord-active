@@ -36,12 +36,15 @@ class CreateProjectSubsetPostAction(BaseModel):
 @router.post("/create_project_subset")
 def create_active_subset(project_hash: uuid.UUID, item: CreateProjectSubsetPostAction):
     with Session(engine) as sess:
-        project = sess.exec(select(Project).where(Project.project_hash == project_hash)).first()
+        project = sess.exec(
+            select(Project).where(Project.project_hash == project_hash)
+        ).first()
         if project is None:
             raise ValueError("Unknown project")
 
         data_hashes = select(ProjectDataUnitMetadata.data_hash).where(
-            ProjectDataUnitMetadata.project_hash == project_hash, in_op(ProjectDataUnitMetadata.du_hash, item.du_hashes)
+            ProjectDataUnitMetadata.project_hash == project_hash,
+            in_op(ProjectDataUnitMetadata.du_hash, item.du_hashes),
         )
         # Map to data_hashes and back again to duplicate expected behaviour.
         hashes_query = select(
@@ -62,12 +65,15 @@ def create_active_subset(project_hash: uuid.UUID, item: CreateProjectSubsetPostA
             new_project_hash = uuid.uuid4()
             new_project_dataset_hash = uuid.uuid4()
             du_hash_to_label_hash_map = {
-                data_hash: uuid.uuid4() for data_hash, du_hash, label_hash, dataset_hash in hashes
+                data_hash: uuid.uuid4()
+                for data_hash, du_hash, label_hash, dataset_hash in hashes
             }
             label_row_json_map = {}
         else:
             # Run for remote project
-            original_project = get_encord_project(project.project_remote_ssh_key_path, str(project.project_hash))
+            original_project = get_encord_project(
+                project.project_remote_ssh_key_path, str(project.project_hash)
+            )
             dataset_hash_map: Dict[uuid.UUID, Set[uuid.UUID]] = {}
             for data_hash, du_hash, label_hash, dataset_hash in hashes:
                 dataset_hash_map.setdefault(dataset_hash, set()).add(data_hash)
@@ -81,23 +87,36 @@ def create_active_subset(project_hash: uuid.UUID, item: CreateProjectSubsetPostA
                     action=CopyDatasetAction.CLONE,
                     dataset_title=item.dataset_name,
                     dataset_description=item.dataset_description,
-                    datasets_to_data_hashes_map={k: list(v) for k, v in dataset_hash_map.items()},
+                    datasets_to_data_hashes_map={
+                        k: list(v) for k, v in dataset_hash_map.items()
+                    },
                 ),
                 copy_labels=CopyLabelsOptions(
                     accepted_label_statuses=[state for state in ReviewApprovalState],
-                    accepted_label_hashes=list({label_hash for data_hash, du_hash, label_hash, dataset_hash in hashes}),
+                    accepted_label_hashes=list(
+                        {
+                            label_hash
+                            for data_hash, du_hash, label_hash, dataset_hash in hashes
+                        }
+                    ),
                 ),
             )
-            new_project = get_encord_project(project.project_remote_ssh_key_path, new_project_hash_str)
+            new_project = get_encord_project(
+                project.project_remote_ssh_key_path, new_project_hash_str
+            )
             new_project_hash = uuid.UUID(new_project_hash_str)
             new_project_label_rows = new_project.list_label_rows_v2()
             du_hash_to_label_hash_map = {
-                label_row.data_hash: label_row.label_hash for label_row in new_project_label_rows
+                label_row.data_hash: label_row.label_hash
+                for label_row in new_project_label_rows
             }
             label_row_json_map = {
-                label_row.data_hash: label_row.to_encord_dict() for label_row in new_project_label_rows
+                label_row.data_hash: label_row.to_encord_dict()
+                for label_row in new_project_label_rows
             }
-            new_project_dataset_hashes = {label_row.dataset_hash for label_row in new_project_label_rows}
+            new_project_dataset_hashes = {
+                label_row.dataset_hash for label_row in new_project_label_rows
+            }
             if len(new_project_dataset_hashes) > 0:
                 raise ValueError("Found multiple dataset hashes!")
             new_project_dataset_hash = uuid.UUID(list(new_project_dataset_hashes)[0])
@@ -116,7 +135,8 @@ def create_active_subset(project_hash: uuid.UUID, item: CreateProjectSubsetPostA
         )
         all_data = sess.exec(
             select(ProjectDataMetadata).where(
-                ProjectDataMetadata.project_hash == project_hash, in_op(ProjectDataMetadata.data_hash, data_hashes)
+                ProjectDataMetadata.project_hash == project_hash,
+                in_op(ProjectDataMetadata.data_hash, data_hashes),
             )
         )
         sess.add_all(
@@ -130,7 +150,9 @@ def create_active_subset(project_hash: uuid.UUID, item: CreateProjectSubsetPostA
                     frames_per_second=data_meta.frames_per_second,
                     dataset_title=item.dataset_name,
                     data_type=data_meta.data_type,
-                    label_row_json=label_row_json_map.get(data_meta.data_hash, data_meta.label_row_json),
+                    label_row_json=label_row_json_map.get(
+                        data_meta.data_hash, data_meta.label_row_json
+                    ),
                 )
             ]
             for data_meta in all_data
@@ -183,9 +205,13 @@ class UploadProjectToEncordPostAction(BaseModel):
 
 
 @router.post("/upload_to_encord")
-def upload_project_to_encord(project_hash: uuid.UUID, item: UploadProjectToEncordPostAction):
+def upload_project_to_encord(
+    project_hash: uuid.UUID, item: UploadProjectToEncordPostAction
+):
     with Session(engine) as sess:
-        project = sess.exec(select(Project).where(Project.project_hash == project_hash)).first()
+        project = sess.exec(
+            select(Project).where(Project.project_hash == project_hash)
+        ).first()
         if project is None:
             raise ValueError("Unknown project")
         if project.project_remote_ssh_key_path is not None:

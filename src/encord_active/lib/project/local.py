@@ -29,7 +29,9 @@ class NoFilesFoundError(Exception):
     """Exception raised when searching for files yielded an empty result."""
 
     def __init__(self):
-        super().__init__("Couldn't find any files to import from the given specifications.")
+        super().__init__(
+            "Couldn't find any files to import from the given specifications."
+        )
 
 
 class ProjectExistsError(Exception):
@@ -104,7 +106,9 @@ def init_local_project(
             print(f"{file} will be skipped as it doesn't seem to be an image.")
 
     empty_structure = OntologyStructure()
-    ontology = client.create_ontology(title=project_name, description="", structure=empty_structure)
+    ontology = client.create_ontology(
+        title=project_name, description="", structure=empty_structure
+    )
     project = client.create_project(
         project_title=project_name,
         description="",
@@ -119,19 +123,26 @@ def init_local_project(
         "project_hash": project.project_hash,
         "has_remote": False,
     }
-    project_file_structure.project_meta.write_text(yaml.dump(project_meta), encoding="utf-8")
+    project_file_structure.project_meta.write_text(
+        yaml.dump(project_meta), encoding="utf-8"
+    )
 
     # attach builtin metrics to the project
     metrics_meta = fill_metrics_meta_with_builtin_metrics()
     update_metrics_meta(project_file_structure, metrics_meta)
 
-    label_row_meta_collection = {lr.label_hash: handle_enum_and_datetime(lr) for lr in project.label_row_meta}
-    project_file_structure.label_row_meta.write_text(json.dumps(label_row_meta_collection, indent=2), encoding="utf-8")
+    label_row_meta_collection = {
+        lr.label_hash: handle_enum_and_datetime(lr) for lr in project.label_row_meta
+    }
+    project_file_structure.label_row_meta.write_text(
+        json.dumps(label_row_meta_collection, indent=2), encoding="utf-8"
+    )
 
     image_to_du = {}
     for label_row_meta in tqdm(project.label_row_meta, desc="Constructing project"):
         label_row = project.create_label_row(label_row_meta.data_hash)
-        image_id = label_row["data_title"]  # This is specific to one image label rows
+        # This is specific to one image label rows
+        image_id = label_row["data_title"]
         for du in label_row["data_units"].values():
             data_hash = du["data_hash"]
             width = du["width"]
@@ -142,7 +153,9 @@ def init_local_project(
                 "width": width,
             }
 
-    transformer = LabelTransformerWrapper(ontology.structure, project.label_rows, label_transformer)
+    transformer = LabelTransformerWrapper(
+        ontology.structure, project.label_rows, label_transformer
+    )
     transformer.add_labels(label_paths or [], data_paths=files)
 
     ensure_prisma_db(project_file_structure.prisma_db)

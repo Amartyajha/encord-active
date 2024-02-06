@@ -21,5 +21,9 @@ class ObjectsCountMetric(Metric):
             return
 
         for data_unit, _ in iterator.iterate(desc="Counting objects"):
-            score = len(data_unit["labels"]["objects"]) if "objects" in data_unit["labels"] else 0
+            score = (
+                len(data_unit["labels"]["objects"])
+                if "objects" in data_unit["labels"]
+                else 0
+            )
             writer.write(score)

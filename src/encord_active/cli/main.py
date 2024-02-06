@@ -11,12 +11,6 @@ from rich.markup import escape
 from rich.panel import Panel
 from typer.core import TyperGroup
 
-from encord_active.cli.project import project_cli
-from encord_active.cli.utils.server import ensure_safe_project
-from encord_active.lib.embeddings.embedding_index import EmbeddingIndex
-
-load_dotenv()
-
 import encord_active.cli.utils.typer  # pylint: disable=unused-import
 import encord_active.db.models as __fixme_debugging
 import encord_active.lib.db  # pylint: disable=unused-import
@@ -25,11 +19,16 @@ from encord_active.cli.config import config_cli
 from encord_active.cli.imports import import_cli
 from encord_active.cli.metric import metric_cli
 from encord_active.cli.print import print_cli
+from encord_active.cli.project import project_cli
 from encord_active.cli.utils.decorators import ensure_project, find_child_projects
 from encord_active.cli.utils.prints import success_with_vizualise_command
+from encord_active.cli.utils.server import ensure_safe_project
 from encord_active.lib import constants as ea_constants
 from encord_active.lib.common.module_loading import ModuleLoadError
+from encord_active.lib.embeddings.embedding_index import EmbeddingIndex
 from encord_active.lib.project.metadata import fetch_project_meta
+
+load_dotenv()
 
 
 class OrderedPanelGroup(TyperGroup):
@@ -48,7 +47,9 @@ class OrderedPanelGroup(TyperGroup):
 
     def list_commands(self, ctx: click.Context):
         sorted_keys = [key for key in self.COMMAND_ORDER if key in self.commands.keys()]
-        remaining = [key for key in self.commands.keys() if key not in self.COMMAND_ORDER]
+        remaining = [
+            key for key in self.commands.keys() if key not in self.COMMAND_ORDER
+        ]
 
         return sorted_keys + remaining
 
@@ -73,18 +74,38 @@ Made by Encord. [bold]Get in touch[/bold]:
 :star: Github: [blue]{ea_constants.GITHUB_URL}[/blue]
 """,
 )
-cli.add_typer(config_cli, name="config", help="[green bold]Configure[/green bold] global settings 🔧")
-cli.add_typer(import_cli, name="import", help="[green bold]Import[/green bold] projects or predictions ⬇️")
+cli.add_typer(
+    config_cli,
+    name="config",
+    help="[green bold]Configure[/green bold] global settings 🔧",
+)
+cli.add_typer(
+    import_cli,
+    name="import",
+    help="[green bold]Import[/green bold] projects or predictions ⬇️",
+)
 cli.add_typer(print_cli, name="print")
-cli.add_typer(metric_cli, name="metric", help="[green bold]Manage[/green bold] project metrics :clipboard:")
-cli.add_typer(project_cli, name="project", help="[green bold]Manage[/green bold] project settings ⚙️")
+cli.add_typer(
+    metric_cli,
+    name="metric",
+    help="[green bold]Manage[/green bold] project metrics :clipboard:",
+)
+cli.add_typer(
+    project_cli,
+    name="project",
+    help="[green bold]Manage[/green bold] project settings ⚙️",
+)
 
 
 @cli.command()
 def download(
     project_name: str = typer.Option(None, help="Name of the chosen project."),
     target: Path = typer.Option(
-        Path.cwd(), "--target", "-t", help="Directory where the project would be saved.", file_okay=False
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Directory where the project would be saved.",
+        file_okay=False,
     ),
 ):
     """
@@ -106,19 +127,28 @@ def download(
     if not project_name:
         rich.print("Loading prebuilt projects ...")
         project_names_with_storage = []
-        downloaded = {fetch_project_meta(project_path)["project_hash"] for project_path in find_child_projects(target)}
+        downloaded = {
+            fetch_project_meta(project_path)["project_hash"]
+            for project_path in find_child_projects(target)
+        }
         for project_name, data in available_prebuilt_projects().items():
             if data["hash"] in downloaded:
                 continue
             project_size = fetch_prebuilt_project_size(project_name)
-            modified_project_name = project_name + (f" ({project_size} MB)" if project_size is not None else "")
+            modified_project_name = project_name + (
+                f" ({project_size} MB)" if project_size is not None else ""
+            )
             project_names_with_storage.append(modified_project_name)
 
         if not project_names_with_storage:
-            rich.print("[green]Nothing to download, current working directory contains all sandbox projects.")
+            rich.print(
+                "[green]Nothing to download, current working directory contains all sandbox projects."
+            )
             raise typer.Exit()
 
-        answer = i.select(message="Choose a project", choices=project_names_with_storage, vi_mode=True).execute()
+        answer = i.select(
+            message="Choose a project", choices=project_names_with_storage, vi_mode=True
+        ).execute()
         if not answer:
             rich.print("No project was selected.")
             raise typer.Abort()
@@ -132,7 +162,9 @@ def download(
 
     project_path = fetch_prebuilt_project(project_name, project_dir)
     ensure_safe_project(project_path)
-    success_with_vizualise_command(project_path, "Successfully downloaded sandbox dataset. ")
+    success_with_vizualise_command(
+        project_path, "Successfully downloaded sandbox dataset. "
+    )
 
 
 @cli.command(
@@ -237,7 +269,9 @@ def import_local_project(
         label_result: List[Path] = []
     else:
         if transformer is None:
-            rich.print("Label glob specified without a transformer. Label glob is only allowed with a transformer.")
+            rich.print(
+                "Label glob specified without a transformer. Label glob is only allowed with a transformer."
+            )
             print(label_glob)
             raise typer.Abort()
 
@@ -263,7 +297,9 @@ def import_local_project(
             raise typer.Abort()
 
         if not transformers_found:
-            rich.print(f"[yellow]Didn't find any transformers in `[blue]{transformer}[/blue]`")
+            rich.print(
+                f"[yellow]Didn't find any transformers in `[blue]{transformer}[/blue]`"
+            )
             raise typer.Abort()
         elif len(transformers_found) == 1:
             selected_transformer = transformers_found[0]
@@ -290,15 +326,22 @@ def import_local_project(
         label_stats = ""
         total_labels = 0
         if selected_transformer is not None:
-            labels = selected_transformer.transformer.from_custom_labels(label_result, data_files=data_result.matched)
+            labels = selected_transformer.transformer.from_custom_labels(
+                label_result, data_files=data_result.matched
+            )
             labels = sorted(labels, key=lambda l: l.abs_data_path)
 
             if not labels:
-                rich.print(f"[yellow]The transformer [blue]{selected_transformer.name}[/blue] didn't return any labels")
+                rich.print(
+                    f"[yellow]The transformer [blue]{selected_transformer.name}[/blue] didn't return any labels"
+                )
             else:
-                rich.print(f"Labels identified by [blue]{selected_transformer.name}[/blue]:")
+                rich.print(
+                    f"Labels identified by [blue]{selected_transformer.name}[/blue]:"
+                )
 
-                found_labels: Dict[str, Dict[str, int]] = {}  # <type, <class, label>>
+                # <type, <class, label>>
+                found_labels: Dict[str, Dict[str, int]] = {}
                 current_file_name = None
                 for label in labels:
                     label_type = type(label.label).__name__
@@ -314,7 +357,9 @@ def import_local_project(
                 total_labels = sum([sum(v.values()) for v in found_labels.values()])
                 for label_type, counts in found_labels.items():
                     label_stats += f"\t{label_type}\n"
-                    label_stats += "\n".join([f"\t\t{k}: {v}" for k, v in counts.items()])
+                    label_stats += "\n".join(
+                        [f"\t\t{k}: {v}" for k, v in counts.items()]
+                    )
                     label_stats += "\n"
 
         exclusion = ""
@@ -337,7 +382,9 @@ def import_local_project(
 
         raise typer.Exit()
 
-    transformer_instance = selected_transformer.transformer if selected_transformer else None
+    transformer_instance = (
+        selected_transformer.transformer if selected_transformer else None
+    )
 
     if not project_name:
         project_name = f"[EA] {root.name}"
@@ -371,15 +418,21 @@ Consider removing the directory or setting the `--name` option.
     if metrics:
         run_metrics_by_embedding_type(EmbeddingType.IMAGE, **metricize_options)
 
-        ontology = OntologyStructure.from_dict(json.loads(ProjectFileStructure(project_path).ontology.read_text()))
+        ontology = OntologyStructure.from_dict(
+            json.loads(ProjectFileStructure(project_path).ontology.read_text())
+        )
         if ontology.objects:
             run_metrics_by_embedding_type(EmbeddingType.OBJECT, **metricize_options)
         if ontology.classifications:
-            run_metrics_by_embedding_type(EmbeddingType.CLASSIFICATION, **metricize_options)
+            run_metrics_by_embedding_type(
+                EmbeddingType.CLASSIFICATION, **metricize_options
+            )
 
     else:
         # NOTE: we need to compute at least one metric otherwise everything breaks
-        run_metrics(filter_func=lambda x: isinstance(x, AreaMetric), **metricize_options)
+        run_metrics(
+            filter_func=lambda x: isinstance(x, AreaMetric), **metricize_options
+        )
 
     success_with_vizualise_command(project_path, "Project initialised :+1:")
 
@@ -387,7 +440,13 @@ Consider removing the directory or setting the `--name` option.
 @cli.command(name="refresh")
 @ensure_project()
 def refresh(
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
     include_unlabeled: bool = typer.Option(
         False,
         "--include-unlabeled",
@@ -422,8 +481,12 @@ def refresh(
                 None,
                 [
                     EmbeddingType.IMAGE if state.data_changed else None,
-                    EmbeddingType.OBJECT if state.labels_changed and state.has_objects else None,
-                    EmbeddingType.CLASSIFICATION if state.labels_changed and state.has_classifications else None,
+                    EmbeddingType.OBJECT
+                    if state.labels_changed and state.has_objects
+                    else None,
+                    EmbeddingType.CLASSIFICATION
+                    if state.labels_changed and state.has_classifications
+                    else None,
                 ],
             )
         )
@@ -438,7 +501,11 @@ def refresh(
 
             EmbeddingIndex.remove_index(project.file_structure, et)
 
-        metrics_to_execute = list(chain(*[get_metrics_by_embedding_type(et) for et in embedding_types_to_update]))
+        metrics_to_execute = list(
+            chain(
+                *[get_metrics_by_embedding_type(et) for et in embedding_types_to_update]
+            )
+        )
         execute_metrics(metrics_to_execute, data_dir=target, use_cache_only=True)
         with DBConnection(project.file_structure) as conn:
             from encord_active.lib.db.merged_metrics import (
@@ -446,7 +513,9 @@ def refresh(
                 build_merged_metrics,
             )
 
-            MergedMetrics(conn).replace_all(build_merged_metrics(project.file_structure.metrics))
+            MergedMetrics(conn).replace_all(
+                build_merged_metrics(project.file_structure.metrics)
+            )
         ensure_safe_project(target)
 
     except AttributeError as e:
@@ -454,13 +523,19 @@ def refresh(
     except Exception as e:
         rich.print(f"[red]ERROR: The data sync failed. Log: {e}.")
     else:
-        rich.print("[green]Data and labels successfully synced from the remote project[/green]")
+        rich.print(
+            "[green]Data and labels successfully synced from the remote project[/green]"
+        )
 
 
 @cli.command(name="start")
 def start(
     target: Path = typer.Option(
-        Path.cwd(), "--target", "-t", help="Path of the project you would like to start", file_okay=False
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path of the project you would like to start",
+        file_okay=False,
     ),
     port: int = typer.Option(8000, help="Bind app to this port", envvar="PORT"),
 ):
@@ -475,7 +550,11 @@ def start(
 @cli.command()
 def quickstart(
     target: Path = typer.Option(
-        Path.cwd(), "--target", "-t", help="Directory where the project would be saved.", file_okay=False
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Directory where the project would be saved.",
+        file_okay=False,
     ),
     port: int = typer.Option(8000, help="Bind app to this port", envvar="PORT"),
 ):
@@ -525,7 +604,11 @@ def join_discord():
 
 
 @cli.callback(invoke_without_command=True)
-def version(version_: bool = typer.Option(False, "--version", "-v", help="Print the current version of Encord Active")):
+def version(
+    version_: bool = typer.Option(
+        False, "--version", "-v", help="Print the current version of Encord Active"
+    ),
+):
     if version_:
         from encord_active import __version__ as ea_version
 

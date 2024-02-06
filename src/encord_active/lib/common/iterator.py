@@ -44,11 +44,15 @@ class Iterator(Sized):
         self.label_rows = self.project.label_rows
 
     @abstractmethod
-    def iterate(self, desc: str = "") -> Generator[Tuple[dict, Optional[Image.Image]], None, None]:
+    def iterate(
+        self, desc: str = ""
+    ) -> Generator[Tuple[dict, Optional[Image.Image]], None, None]:
         pass
 
     @abstractmethod
-    def get_identifier(self, object: Union[dict, list[dict], None] = None, frame: Optional[int] = None) -> Any:
+    def get_identifier(
+        self, object: Union[dict, list[dict], None] = None, frame: Optional[int] = None
+    ) -> Any:
         pass
 
     @abstractmethod
@@ -56,7 +60,9 @@ class Iterator(Sized):
         pass
 
     @abstractmethod
-    def get_label_logs(self, object_hash: Optional[str] = None, refresh: bool = False) -> List[dict]:
+    def get_label_logs(
+        self, object_hash: Optional[str] = None, refresh: bool = False
+    ) -> List[dict]:
         pass
 
     @staticmethod
@@ -66,18 +72,31 @@ class Iterator(Sized):
 
 
 class DatasetIterator(Iterator):
-    def __init__(self, cache_dir: Path, subset_size: Optional[int] = None, skip_labeled_data: bool = False, **kwargs):
+    def __init__(
+        self,
+        cache_dir: Path,
+        subset_size: Optional[int] = None,
+        skip_labeled_data: bool = False,
+        **kwargs,
+    ):
         super().__init__(cache_dir, subset_size, **kwargs)
         self.key = ""
         self._skip_labeled_data = skip_labeled_data
         self.length = reduce(
             lambda s, lr: s
-            + sum(map(lambda du: 1 if "objects" in du["labels"] else len(du["labels"]), lr["data_units"].values())),
+            + sum(
+                map(
+                    lambda du: 1 if "objects" in du["labels"] else len(du["labels"]),
+                    lr["data_units"].values(),
+                )
+            ),
             self.label_rows.values(),
             0,
         )
 
-    def iterate(self, desc: str = "") -> Generator[Tuple[dict, Optional[Image.Image]], None, None]:
+    def iterate(
+        self, desc: str = ""
+    ) -> Generator[Tuple[dict, Optional[Image.Image]], None, None]:
         with PrismaConnection(self.project_file_structure) as cache_db:
             pbar = tqdm(total=self.length, desc=desc, leave=False)
             for label_hash, label_row in self.label_rows.items():
@@ -85,12 +104,17 @@ class DatasetIterator(Iterator):
                 self.label_hash = label_hash
                 if label_row.data_type in {"img_group", "image"}:
                     self.num_frames = len(label_row.data_units)
-                    data_units = sorted(label_row.data_units.values(), key=lambda du: int(du["data_sequence"]))
+                    data_units = sorted(
+                        label_row.data_units.values(),
+                        key=lambda du: int(du["data_sequence"]),
+                    )
                     for data_unit in data_units:
-
                         if self._skip_labeled_data:
                             du_label = data_unit.get("labels", {})
-                            if du_label.get("objects", []) != [] or du_label.get("classifications", []) != []:
+                            if (
+                                du_label.get("objects", []) != []
+                                or du_label.get("classifications", []) != []
+                            ):
                                 pbar.update(1)
                                 continue
 
@@ -98,9 +122,9 @@ class DatasetIterator(Iterator):
                         self.frame = int(data_unit["data_sequence"])
                         try:
                             img_metadata = next(
-                                self.project_file_structure.label_row_structure(label_hash).iter_data_unit(
-                                    self.du_hash, cache_db=cache_db
-                                ),
+                                self.project_file_structure.label_row_structure(
+                                    label_hash
+                                ).iter_data_unit(self.du_hash, cache_db=cache_db),
                                 None,
                             )
                             image = None
@@ -120,9 +144,9 @@ class DatasetIterator(Iterator):
                     data_unit, *_ = label_row["data_units"].values()
                     self.du_hash = data_unit["data_hash"]
                     video_metadata = next(
-                        self.project_file_structure.label_row_structure(label_hash).iter_data_unit(
-                            self.du_hash, cache_db=cache_db
-                        ),
+                        self.project_file_structure.label_row_structure(
+                            label_hash
+                        ).iter_data_unit(self.du_hash, cache_db=cache_db),
                         None,
                     )
                     if video_metadata is None:
@@ -131,7 +155,9 @@ class DatasetIterator(Iterator):
                     # Create temporary folder containing the video
                     with tempfile.TemporaryDirectory() as working_dir:
                         working_path = Path(working_dir)
-                        safe_data_title = re.sub(r'[\\/:*?"<>|\x00-\x1F\x7F ]', "_", data_unit["data_title"])
+                        safe_data_title = re.sub(
+                            r'[\\/:*?"<>|\x00-\x1F\x7F ]', "_", data_unit["data_title"]
+                        )
                         video_path = working_path / safe_data_title
                         video_images_dir = working_path / "images"
                         download_file(
@@ -139,23 +165,38 @@ class DatasetIterator(Iterator):
                             project_dir=self.project_file_structure.project_dir,
                             destination=video_path,
                         )
-                        extract_frames(video_path, video_images_dir, self.du_hash, data_unit["data_fps"])
+                        extract_frames(
+                            video_path,
+                            video_images_dir,
+                            self.du_hash,
+                            data_unit["data_fps"],
+                        )
 
                         fake_data_unit = deepcopy(data_unit)
 
-                        for frame_id in range(len(list(video_images_dir.glob("*_*.*")))):
+                        for frame_id in range(
+                            len(list(video_images_dir.glob("*_*.*")))
+                        ):
                             self.frame = frame_id
-                            fake_data_unit["labels"] = data_unit["labels"].get(str(frame_id), {})
+                            fake_data_unit["labels"] = data_unit["labels"].get(
+                                str(frame_id), {}
+                            )
 
                             if self._skip_labeled_data:
                                 if (
                                     fake_data_unit["labels"].get("objects", []) != []
-                                    or fake_data_unit["labels"].get("classifications", []) != []
+                                    or fake_data_unit["labels"].get(
+                                        "classifications", []
+                                    )
+                                    != []
                                 ):
                                     pbar.update(1)
                                     continue
 
-                            image_path = next(video_images_dir.glob(f"{self.du_hash}_{frame_id}.*"), None)
+                            image_path = next(
+                                video_images_dir.glob(f"{self.du_hash}_{frame_id}.*"),
+                                None,
+                            )
                             if image_path:
                                 yield fake_data_unit, Image.open(image_path)
                             else:
@@ -163,12 +204,16 @@ class DatasetIterator(Iterator):
                             pbar.update(1)
 
                 else:
-                    logger.error(f"Label row '{label_hash}' with data type '{label_row.data_type}' is not recognized")
+                    logger.error(
+                        f"Label row '{label_hash}' with data type '{label_row.data_type}' is not recognized"
+                    )
 
     def __len__(self):
         return self.length
 
-    def get_identifier(self, object: Union[dict, list[dict], None] = None, frame: Optional[int] = None):
+    def get_identifier(
+        self, object: Union[dict, list[dict], None] = None, frame: Optional[int] = None
+    ):
         frame_idx = frame if frame is not None else self.frame
         key = f"{self.label_hash}_{self.du_hash}_{frame_idx:05d}"
 
@@ -177,13 +222,18 @@ class DatasetIterator(Iterator):
                 objects = [object]
             else:
                 objects = object  # object is expected to be a list[dict]
-            hashes = [obj["objectHash"] if "objectHash" in obj else obj["featureHash"] for obj in objects]
+            hashes = [
+                obj["objectHash"] if "objectHash" in obj else obj["featureHash"]
+                for obj in objects
+            ]
             return "_".join(chain([key], hashes))
         return key
 
     def get_data_url(self) -> str:
         label_row_meta = self.project.label_row_metas.get(self.label_hash, None)
-        data_hash_meta = label_row_meta.data_hash if label_row_meta is not None else self.du_hash
+        data_hash_meta = (
+            label_row_meta.data_hash if label_row_meta is not None else self.du_hash
+        )
         base_url = "https://app.encord.com/label_editor/"
         data_url = f"{base_url}{data_hash_meta}&{self.project.project_hash}"
         if isinstance(self.frame, int):
@@ -191,13 +241,17 @@ class DatasetIterator(Iterator):
         return data_url
 
     @staticmethod
-    def __filter_logs_on_object_hash(logs: List[dict], object_hash: Optional[str] = None) -> List[dict]:
+    def __filter_logs_on_object_hash(
+        logs: List[dict], object_hash: Optional[str] = None
+    ) -> List[dict]:
         if object_hash is None:
             return logs
 
         return list(filter(lambda x: x["annotation_hash"] == object_hash, logs))
 
-    def get_label_logs(self, object_hash: Optional[str] = None, refresh: bool = False) -> List[dict]:
+    def get_label_logs(
+        self, object_hash: Optional[str] = None, refresh: bool = False
+    ) -> List[dict]:
         """
         Fetches label logs from the sdk if they are not cached locally. The `refresh=True` will fetch a new version
         of the label logs.
@@ -217,13 +271,17 @@ class DatasetIterator(Iterator):
         if (no_logs_file).exists():
             return []
 
-        label_logs_file = self.cache_dir / "label_logs" / self.label_hash / f"{self.frame:05d}.json"
+        label_logs_file = (
+            self.cache_dir / "label_logs" / self.label_hash / f"{self.frame:05d}.json"
+        )
         if label_logs_file.parent.exists() and not refresh:
             if label_logs_file.exists():
                 try:
                     with label_logs_file.open("r", encoding="utf-8") as f:
                         json_logs: List[dict] = json.load(f)["logs"]
-                        return self.__filter_logs_on_object_hash(json_logs, object_hash=object_hash)
+                        return self.__filter_logs_on_object_hash(
+                            json_logs, object_hash=object_hash
+                        )
                 except JSONDecodeError:
                     pass
             return []

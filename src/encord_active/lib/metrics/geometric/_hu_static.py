@@ -24,7 +24,9 @@ def compute_cls_distances(embeddings: np.ndarray, labels: np.ndarray) -> np.ndar
         centroid = cls_embeddings.mean(axis=0)
         cls_distances = np.linalg.norm(cls_embeddings - centroid, axis=1)
         cls_distance_vector[cls_mask] = cls_distances
-    cls_distance_vector[cls_distance_vector == 0] = cls_distance_vector[cls_distance_vector != 0].min()
+    cls_distance_vector[cls_distance_vector == 0] = cls_distance_vector[
+        cls_distance_vector != 0
+    ].min()
     return cls_distance_vector
 
 
@@ -43,7 +45,9 @@ class HuMomentsStatic(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         hu_moments_df = get_hu_embeddings(iterator, force=True)
 
         moments_list: List[np.ndarray] = []
@@ -60,7 +64,13 @@ class HuMomentsStatic(Metric):
                     continue
 
                 key = writer.get_identifier(obj)
-                moments = np.array(eval(hu_moments_df.loc[hu_moments_df["identifier"] == key, "embedding"].values[0]))
+                moments = np.array(
+                    eval(
+                        hu_moments_df.loc[
+                            hu_moments_df["identifier"] == key, "embedding"
+                        ].values[0]
+                    )
+                )
 
                 obj_list.append(obj)
                 obj_hashes.append(obj["objectHash"])
@@ -86,10 +96,14 @@ class HuMomentsStatic(Metric):
                 except:
                     continue
 
-                writer.write(float(distance_vector[index]), obj, label_class=cls_list[index])
+                writer.write(
+                    float(distance_vector[index]), obj, label_class=cls_list[index]
+                )
 
         pca_coordinates = PCA(n_components=2).fit_transform(X)
-        with CSVEmbeddingWriter(iterator.cache_dir, iterator, prefix="hu_2d-embedding") as coords_writer:
+        with CSVEmbeddingWriter(
+            iterator.cache_dir, iterator, prefix="hu_2d-embedding"
+        ) as coords_writer:
             for data_unit, _ in iterator.iterate(desc="writing scores"):
                 if "objects" not in data_unit["labels"]:
                     continue
@@ -100,4 +114,8 @@ class HuMomentsStatic(Metric):
                     except:
                         continue
 
-                    coords_writer.write(pca_coordinates[index].tolist(), obj, label_class=cls_list[index])
+                    coords_writer.write(
+                        pca_coordinates[index].tolist(),
+                        obj,
+                        label_class=cls_list[index],
+                    )

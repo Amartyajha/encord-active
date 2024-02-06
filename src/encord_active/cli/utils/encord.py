@@ -18,7 +18,9 @@ from encord_active.lib.metrics.io import fill_metrics_meta_with_builtin_metrics
 from encord_active.lib.metrics.metadata import update_metrics_meta
 from encord_active.lib.project.project_file_structure import ProjectFileStructure
 
-PROJECT_HASH_REGEX = r"([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})"
+PROJECT_HASH_REGEX = (
+    r"([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})"
+)
 
 
 def suggest_tagging_data(ontology: OntologyStructure) -> set[str]:
@@ -111,16 +113,26 @@ Check that you have the correct ssh key set up and available projects on [blue]h
 
     rich.print("Stored the following data:")
     rich.print(f"[magenta]{escape(yaml_str)}")
-    rich.print(f'In file: [blue]"{escape(project_file_structure.project_meta.as_posix())}"')
+    rich.print(
+        f'In file: [blue]"{escape(project_file_structure.project_meta.as_posix())}"'
+    )
 
-    has_uninitialized_rows = not all(row["label_hash"] is not None for row in project.label_rows)
+    has_uninitialized_rows = not all(
+        row["label_hash"] is not None for row in project.label_rows
+    )
     if has_uninitialized_rows and typer.confirm(
         """Would you like to include uninitialized label rows?
 NOTE: this will affect the results of 'encord.Project.list_label_rows()' as every label row will now have a label_hash.
         """
     ):
-        untoched_data = [x for x in project.list_label_rows_v2() if x.label_hash is None]
-        collect_async(lambda x: x.initialise_labels(), untoched_data, desc="Preparing uninitialized label rows")
+        untoched_data = [
+            x for x in project.list_label_rows_v2() if x.label_hash is None
+        ]
+        collect_async(
+            lambda x: x.initialise_labels(),
+            untoched_data,
+            desc="Preparing uninitialized label rows",
+        )
         project.refetch_data()
         rich.print()
 
@@ -130,6 +142,8 @@ NOTE: this will affect the results of 'encord.Project.list_label_rows()' as ever
     ensure_safe_project(project_file_structure.project_dir)
 
     if option_hashes_to_tag:
-        populate_tags_with_nested_classifications(project_file_structure, option_hashes_to_tag)
+        populate_tags_with_nested_classifications(
+            project_file_structure, option_hashes_to_tag
+        )
 
     return project_path

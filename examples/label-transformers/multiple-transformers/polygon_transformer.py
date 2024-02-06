@@ -14,7 +14,9 @@ from encord_active.lib.labels.label_transformer import (
 
 
 class PolyTransformer(LabelTransformer):
-    def from_custom_labels(self, label_files: List[Path], data_files: List[Path]) -> List[DataLabel]:
+    def from_custom_labels(
+        self, label_files: List[Path], data_files: List[Path]
+    ) -> List[DataLabel]:
         meta, label_files = get_meta_and_labels(label_files, extension=".png")
 
         out = []
@@ -32,7 +34,9 @@ class PolyTransformer(LabelTransformer):
                     continue
 
                 instance_mask = (image == instance_id).astype(np.uint8)
-                contours, _ = cv2.findContours(instance_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                contours, _ = cv2.findContours(
+                    instance_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
 
                 for contour in contours:
                     contour = contour.squeeze() / normalization
@@ -41,7 +45,9 @@ class PolyTransformer(LabelTransformer):
                         DataLabel(
                             abs_data_path=image_file,
                             label=PolygonLabel(
-                                class_=classes.get(str(instance_id), {}).get("category", "unknown"),
+                                class_=classes.get(str(instance_id), {}).get(
+                                    "category", "unknown"
+                                ),
                                 polygon=contour,
                             ),
                         )

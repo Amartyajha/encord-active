@@ -16,7 +16,9 @@ def _regen():
             generate_prisma_client()
             importlib.reload(prisma)
             # Exit with message instead, as attempt at dynamic reload doesn't seem to be working.
-            logger.warning("Prisma db module is out of date, regenerating, please execute the command again")
+            logger.warning(
+                "Prisma db module is out of date, regenerating, please execute the command again"
+            )
             sys.exit(1)
     except (RuntimeError, ImportError):
         generate_prisma_client()

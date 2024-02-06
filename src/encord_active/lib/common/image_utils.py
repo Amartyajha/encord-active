@@ -42,7 +42,11 @@ def get_bbox_csv(row: pd.Series) -> np.ndarray:
     The input should be a row from a LabelSchema (or descendants thereof).
     """
     x1, y1, x2, y2 = row["x1"], row["y1"], row["x2"], row["y2"]
-    return np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]]).reshape((-1, 1, 2)).astype(int)
+    return (
+        np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+        .reshape((-1, 1, 2))
+        .astype(int)
+    )
 
 
 def draw_object_with_background_color(
@@ -56,7 +60,6 @@ def draw_object_with_background_color(
         if geometry.ndim == 2:
             geometry = geometry.reshape(-1, 1, 2)
         geometry = [geometry]
-
     """
         img_w_poly = cv2.fillPoly(image.copy(), [geometry], hex_to_rgb(color, lighten=0.5))
         image = cv2.addWeighted(image, 1 - draw_configurations.opacity, img_w_poly, draw_configurations.opacity, 1.0)
@@ -64,9 +67,19 @@ def draw_object_with_background_color(
     """
 
     hex_color = color.value if isinstance(color, Color) else color
-    img_w_poly = cv2.fillPoly(image.copy(), geometry, hex_to_rgb(hex_color, lighten=0.5))
-    image = cv2.addWeighted(image, 1 - draw_configurations.opacity, img_w_poly, draw_configurations.opacity, 1.0)
-    return cv2.polylines(image, geometry, True, hex_to_rgb(hex_color), draw_configurations.contour_width)
+    img_w_poly = cv2.fillPoly(
+        image.copy(), geometry, hex_to_rgb(hex_color, lighten=0.5)
+    )
+    image = cv2.addWeighted(
+        image,
+        1 - draw_configurations.opacity,
+        img_w_poly,
+        draw_configurations.opacity,
+        1.0,
+    )
+    return cv2.polylines(
+        image, geometry, True, hex_to_rgb(hex_color), draw_configurations.contour_width
+    )
 
 
 def draw_object(
@@ -91,7 +104,14 @@ def draw_object(
         return draw_object_with_background_color(image, box, color, draw_configuration)
 
     if with_box:
-        image = cv2.polylines(image, [box], isClosed, _color, draw_configuration.contour_width, lineType=cv2.LINE_8)
+        image = cv2.polylines(
+            image,
+            [box],
+            isClosed,
+            _color,
+            draw_configuration.contour_width,
+            lineType=cv2.LINE_8,
+        )
 
     mask = rle_to_binary_mask(eval(row["rle"]))
     contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
@@ -126,7 +146,13 @@ def show_image_with_predictions_and_label(
         color = class_colors.get(pred["class_id"], Color.PURPLE)
         image = draw_object(image, pred, draw_configurations, color=color)
 
-    return draw_object(image, label, draw_configuration=draw_configurations, color=label_color, with_box=True)
+    return draw_object(
+        image,
+        label,
+        draw_configuration=draw_configurations,
+        color=label_color,
+        with_box=True,
+    )
 
 
 def show_image_and_draw_polygons(
@@ -151,7 +177,9 @@ def show_image_and_draw_polygons(
             skip_object_hash=skip_object_hash,
             cache_db=cache_db,
         ):
-            image = draw_object_with_background_color(image, geometry, color, draw_configurations)
+            image = draw_object_with_background_color(
+                image, geometry, color, draw_configurations
+            )
     return image
 
 
@@ -202,7 +230,16 @@ def load_or_fill_image(
     image[:, -4:] = [255, 0, 0]
     font = cv2.FONT_HERSHEY_SIMPLEX
     pos = int(0.05 * min(w, h))
-    cv2.putText(image, error_text, (pos, 2 * pos), font, w / 900, hex_to_rgb("#999999"), 2, cv2.LINE_AA)
+    cv2.putText(
+        image,
+        error_text,
+        (pos, 2 * pos),
+        font,
+        w / 900,
+        hex_to_rgb("#999999"),
+        2,
+        cv2.LINE_AA,
+    )
 
     return image
 
@@ -210,7 +247,9 @@ def load_or_fill_image(
 def __get_key(row: Union[pd.Series, str]):
     if isinstance(row, pd.Series):
         if "identifier" not in row:
-            raise ValueError("A Series passed but the series doesn't contain 'identifier'")
+            raise ValueError(
+                "A Series passed but the series doesn't contain 'identifier'"
+            )
         return str(row["identifier"])
     elif isinstance(row, str):
         return row
@@ -218,7 +257,9 @@ def __get_key(row: Union[pd.Series, str]):
         raise Exception(f"Undefined row type {row}")
 
 
-def __get_geometry(obj: dict, img_h: int, img_w: int) -> Optional[Tuple[str, np.ndarray]]:
+def __get_geometry(
+    obj: dict, img_h: int, img_w: int
+) -> Optional[Tuple[str, np.ndarray]]:
     """
     Convert Encord object dictionary to polygon coordinates used to draw geometries
     with opencv.
@@ -233,7 +274,9 @@ def __get_geometry(obj: dict, img_h: int, img_w: int) -> Optional[Tuple[str, np.
         p = obj.get("polygon", {})
         if not p:
             return None
-        polygon = np.array([[p[str(i)]["x"] * img_w, p[str(i)]["y"] * img_h] for i in range(len(p))])
+        polygon = np.array(
+            [[p[str(i)]["x"] * img_w, p[str(i)]["y"] * img_h] for i in range(len(p))]
+        )
     elif obj["shape"] == ObjectShape.BOUNDING_BOX:
         bbox_dict = obj.get("boundingBox", {})
         if not bbox_dict:
@@ -242,7 +285,9 @@ def __get_geometry(obj: dict, img_h: int, img_w: int) -> Optional[Tuple[str, np.
         polygon = np.array(__to_absolute_points(b, img_h, img_w))
     elif obj["shape"] == ObjectShape.ROTATABLE_BOUNDING_BOX:
         b = BoundingBox.parse_obj(obj["rotatableBoundingBox"])
-        rotated_polygon = rotate(Polygon(__to_absolute_points(b, img_h, img_w)), b.theta)
+        rotated_polygon = rotate(
+            Polygon(__to_absolute_points(b, img_h, img_w)), b.theta
+        )
         if not rotated_polygon or not rotated_polygon.exterior:
             return None
         polygon = np.array(list(rotated_polygon.exterior.coords))
@@ -257,7 +302,10 @@ def __to_absolute_points(bounding_box: BoundingBox, height: int, width: int):
     return [
         [bounding_box.x * width, bounding_box.y * height],
         [(bounding_box.x + bounding_box.w) * width, bounding_box.y * height],
-        [(bounding_box.x + bounding_box.w) * width, (bounding_box.y + bounding_box.h) * height],
+        [
+            (bounding_box.x + bounding_box.w) * width,
+            (bounding_box.y + bounding_box.h) * height,
+        ],
         [bounding_box.x * width, (bounding_box.y + bounding_box.h) * height],
     ]
 
@@ -282,7 +330,10 @@ def get_geometries(
 
     label_row_structure = key_to_label_row_structure(key, project_file_structure)
     label_row = label_row_structure.get_label_row_json(cache_db=cache_db)
-    du_struct = next(label_row_structure.iter_data_unit(data_unit_hash=du_hash, cache_db=cache_db), None)
+    du_struct = next(
+        label_row_structure.iter_data_unit(data_unit_hash=du_hash, cache_db=cache_db),
+        None,
+    )
     if not du_struct:
         return []
 
@@ -304,7 +355,11 @@ def get_geometries(
     else:
         # Get all geometries
         for obj in objects:
-            if obj["shape"] not in {ObjectShape.POLYGON, ObjectShape.BOUNDING_BOX, ObjectShape.ROTATABLE_BOUNDING_BOX}:
+            if obj["shape"] not in {
+                ObjectShape.POLYGON,
+                ObjectShape.BOUNDING_BOX,
+                ObjectShape.ROTATABLE_BOUNDING_BOX,
+            }:
                 continue
             geometries.append(__get_geometry(obj, img_h=img_h, img_w=img_w))
 
@@ -312,7 +367,9 @@ def get_geometries(
     return valid_geometries
 
 
-def key_to_label_row_structure(key: str, project_file_structure: ProjectFileStructure) -> LabelRowStructure:
+def key_to_label_row_structure(
+    key: str, project_file_structure: ProjectFileStructure
+) -> LabelRowStructure:
     label_hash, *_ = key.split("_")
     return project_file_structure.label_row_structure(label_hash)
 
@@ -334,8 +391,16 @@ def key_to_data_unit(
 
     # check if it is a video frame
     frame_du = next(
-        label_row_structure.iter_data_unit_with_image_or_signed_url(du_hash, int(frame), cache_db=cache_db), None
+        label_row_structure.iter_data_unit_with_image_or_signed_url(
+            du_hash, int(frame), cache_db=cache_db
+        ),
+        None,
     )
     if frame_du is not None:
         return frame_du
-    return next(label_row_structure.iter_data_unit_with_image_or_signed_url(du_hash, cache_db=cache_db), None)
+    return next(
+        label_row_structure.iter_data_unit_with_image_or_signed_url(
+            du_hash, cache_db=cache_db
+        ),
+        None,
+    )

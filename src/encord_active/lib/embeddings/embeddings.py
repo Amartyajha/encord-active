@@ -58,7 +58,9 @@ def assemble_object_batch(data_unit: dict, image: Image.Image) -> List[Image.Ima
 
 @torch.inference_mode()
 def generate_image_embeddings(
-    iterator: Iterator, feature_extractor: Optional[ImageEmbedder] = None, batch_size=100
+    iterator: Iterator,
+    feature_extractor: Optional[ImageEmbedder] = None,
+    batch_size=100,
 ) -> List[LabelEmbedding]:
     start = time.perf_counter()
     if feature_extractor is None:
@@ -67,7 +69,9 @@ def generate_image_embeddings(
     raw_embeddings: list[np.ndarray] = []
     batch = []
     skip: set[int] = set()
-    for i, (data_unit, image) in enumerate(iterator.iterate(desc="Embedding image data")):
+    for i, (data_unit, image) in enumerate(
+        iterator.iterate(desc="Embedding image data")
+    ):
         if image is None:
             skip.add(i)
             continue
@@ -141,7 +145,11 @@ def generate_object_embeddings(
             ]:
                 continue
 
-            last_edited_by = obj["lastEditedBy"] if "lastEditedBy" in obj.keys() else obj["createdBy"]
+            last_edited_by = (
+                obj["lastEditedBy"]
+                if "lastEditedBy" in obj.keys()
+                else obj["createdBy"]
+            )
 
             entry = LabelEmbedding(
                 url=data_unit["data_link"],
@@ -170,7 +178,9 @@ def generate_object_embeddings(
 def generate_classification_embeddings(
     iterator: Iterator, feature_extractor: Optional[ImageEmbedder]
 ) -> List[LabelEmbedding]:
-    image_label_embeddings = get_embeddings(iterator, embedding_type=EmbeddingType.IMAGE)
+    image_label_embeddings = get_embeddings(
+        iterator, embedding_type=EmbeddingType.IMAGE
+    )
 
     ontology_class_hash_to_index: dict[str, dict] = {}
     ontology_class_hash_to_question_hash: dict[str, str] = {}
@@ -182,9 +192,13 @@ def generate_classification_embeddings(
         if class_question.get_property_type() == PropertyType.RADIO:
             ontology_class_hash = class_label.feature_node_hash
             ontology_class_hash_to_index[ontology_class_hash] = {}
-            ontology_class_hash_to_question_hash[ontology_class_hash] = class_question.feature_node_hash
+            ontology_class_hash_to_question_hash[
+                ontology_class_hash
+            ] = class_question.feature_node_hash
             for index, option in enumerate(class_question.options):  # type: ignore
-                ontology_class_hash_to_index[ontology_class_hash][option.feature_node_hash] = index
+                ontology_class_hash_to_index[ontology_class_hash][
+                    option.feature_node_hash
+                ] = index
 
     start = time.perf_counter()
     if feature_extractor is None:
@@ -216,7 +230,9 @@ def generate_classification_embeddings(
         if embedding is None:
             continue
 
-        classification_answers = iterator.label_rows[iterator.label_hash]["classification_answers"]
+        classification_answers = iterator.label_rows[iterator.label_hash][
+            "classification_answers"
+        ]
         for classification in data_unit["labels"].get("classifications", []):
             last_edited_by = (
                 classification["lastEditedBy"]
@@ -230,15 +246,22 @@ def generate_classification_embeddings(
                 continue
 
             answers: List[ClassificationAnswer] = []
-            if ontology_class_hash in ontology_class_hash_to_index.keys() and classification_answers:
-                for classification_answer in classification_answers[classification_hash]["classifications"]:
+            if (
+                ontology_class_hash in ontology_class_hash_to_index.keys()
+                and classification_answers
+            ):
+                for classification_answer in classification_answers[
+                    classification_hash
+                ]["classifications"]:
                     if (
                         classification_answer["featureHash"]
                         == ontology_class_hash_to_question_hash[ontology_class_hash]
                     ):
                         answers.append(
                             ClassificationAnswer(
-                                answer_featureHash=classification_answer["answers"][0]["featureHash"],
+                                answer_featureHash=classification_answer["answers"][0][
+                                    "featureHash"
+                                ],
                                 answer_name=classification_answer["answers"][0]["name"],
                                 annotator=classification["createdBy"],
                             )
@@ -268,9 +291,17 @@ def generate_classification_embeddings(
     return clf_label_embeddings
 
 
-def get_embeddings(iterator: Iterator, embedding_type: EmbeddingType, *, force: bool = False) -> List[LabelEmbedding]:
-    if embedding_type not in [EmbeddingType.CLASSIFICATION, EmbeddingType.IMAGE, EmbeddingType.OBJECT]:
-        raise Exception(f"Undefined embedding type '{embedding_type}' for get_embeddings method")
+def get_embeddings(
+    iterator: Iterator, embedding_type: EmbeddingType, *, force: bool = False
+) -> List[LabelEmbedding]:
+    if embedding_type not in [
+        EmbeddingType.CLASSIFICATION,
+        EmbeddingType.IMAGE,
+        EmbeddingType.OBJECT,
+    ]:
+        raise Exception(
+            f"Undefined embedding type '{embedding_type}' for get_embeddings method"
+        )
 
     pfs = ProjectFileStructure(iterator.cache_dir)
     embedding_path = pfs.get_embeddings_file(embedding_type)
@@ -292,14 +323,23 @@ def get_embeddings(iterator: Iterator, embedding_type: EmbeddingType, *, force: 
 
 
 def generate_embeddings(
-    iterator: Iterator, embedding_type: EmbeddingType, target: Path, feature_extractor: Optional[ImageEmbedder] = None
+    iterator: Iterator,
+    embedding_type: EmbeddingType,
+    target: Path,
+    feature_extractor: Optional[ImageEmbedder] = None,
 ):
     if embedding_type == EmbeddingType.IMAGE:
-        embeddings = generate_image_embeddings(iterator, feature_extractor=feature_extractor)
+        embeddings = generate_image_embeddings(
+            iterator, feature_extractor=feature_extractor
+        )
     elif embedding_type == EmbeddingType.OBJECT:
-        embeddings = generate_object_embeddings(iterator, feature_extractor=feature_extractor)
+        embeddings = generate_object_embeddings(
+            iterator, feature_extractor=feature_extractor
+        )
     elif embedding_type == EmbeddingType.CLASSIFICATION:
-        embeddings = generate_classification_embeddings(iterator, feature_extractor=feature_extractor)
+        embeddings = generate_classification_embeddings(
+            iterator, feature_extractor=feature_extractor
+        )
     else:
         raise ValueError(f"Unsupported embedding type {embedding_type}")
 

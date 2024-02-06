@@ -31,11 +31,17 @@ is used to measure closeness of two annotations.""",
         self.threshold = threshold
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, _ in iterator.iterate(desc="Looking for duplicates"):
-            objects = [obj for obj in data_unit["labels"].get("objects", []) if obj["shape"] in valid_annotation_types]
+            objects = [
+                obj
+                for obj in data_unit["labels"].get("objects", [])
+                if obj["shape"] in valid_annotation_types
+            ]
             polygons = [get_polygon(obj) for obj in objects]
 
             duplicated_annotations = set()
@@ -53,13 +59,18 @@ is used to measure closeness of two annotations.""",
                 identifiers = [obj1]
                 if match is None or score < self.threshold:
                     description = "Possible non duplicated object"
-                elif (obj1["objectHash"], match["objectHash"]) in duplicated_annotations:
+                elif (
+                    obj1["objectHash"],
+                    match["objectHash"],
+                ) in duplicated_annotations:
                     # avoid reporting twice same annotation pair (in case (obj2, obj1) was previously analysed)
                     continue
                 else:
                     identifiers.append(match)
                     description = "Possible duplicates"
-                    duplicated_annotations.add((match["objectHash"], obj1["objectHash"]))
+                    duplicated_annotations.add(
+                        (match["objectHash"], obj1["objectHash"])
+                    )
 
                 writer.write(score, labels=identifiers, description=description)
                 found_any = True

@@ -94,7 +94,9 @@ def get_dimensions(path, data_type: DataType) -> Dimensions:
         size = Image.open(path).size
         return Dimensions(size[1], size[0])
     else:
-        raise FileTypeNotSupportedError("Video support for local initialisation is not implemented yet.")
+        raise FileTypeNotSupportedError(
+            "Video support for local initialisation is not implemented yet."
+        )
         # with av.open(path) as container:
         #     stream = container.streams.video[0]
         #     for frame in container.decode(stream):
@@ -126,7 +128,9 @@ def get_data_units(dr: LocalDataRow) -> Dict[str, dict]:
     return data_units
 
 
-def get_empty_label_row(meta: LabelRowMetadata, dr: LocalDataRow, dataset_title: str) -> LabelRow:
+def get_empty_label_row(
+    meta: LabelRowMetadata, dr: LocalDataRow, dataset_title: str
+) -> LabelRow:
     """
     Constructs an empty label row (without annotations) based of the information given.
     """
@@ -188,7 +192,9 @@ class LocalDataset:
     @staticmethod
     def check_mime_type(path: Path):
         if "image" not in get_mimetype(path):
-            raise FileTypeNotSupportedError("Video support for local initialisation is not implemented yet.")
+            raise FileTypeNotSupportedError(
+                "Video support for local initialisation is not implemented yet."
+            )
 
     def create_image_group(
         self,
@@ -210,7 +216,8 @@ class LocalDataset:
             title: The title of the image group.
         """
         _file_paths = list(map(Path, file_paths))
-        [self.check_mime_type(p) for p in _file_paths]  # Raises FileTypeNotSupportedError
+        # Raises FileTypeNotSupportedError
+        [self.check_mime_type(p) for p in _file_paths]
 
         data_hash = str(uuid4())
         label_hash = str(uuid4())
@@ -233,11 +240,17 @@ class LocalDataset:
             title = f"image-group-{uid}"
 
         data_row = LocalDataRow(
-            uid=data_hash, label_hash=label_hash, title=title, data_type=DataType.IMAGE, media=media
+            uid=data_hash,
+            label_hash=label_hash,
+            title=title,
+            data_type=DataType.IMAGE,
+            media=media,
         )
         self._data_rows[data_hash] = data_row
 
-    def upload_image(self, file_path: Union[Path, str], title: str = "") -> LocalDataRow:
+    def upload_image(
+        self, file_path: Union[Path, str], title: str = ""
+    ) -> LocalDataRow:
         """
         Copies image to `self.data_path/label_hash/images/datahash.ext`.
 
@@ -273,7 +286,11 @@ class LocalDataset:
             title = _uri.name
 
         data_row = LocalDataRow(
-            uid=data_hash, label_hash=label_hash, title=title, data_type=DataType.IMAGE, media=[dr_media]
+            uid=data_hash,
+            label_hash=label_hash,
+            title=title,
+            data_type=DataType.IMAGE,
+            media=[dr_media],
         )
         self._data_rows[data_hash] = data_row
         return data_row
@@ -367,7 +384,9 @@ class LocalProject:
         meta: LabelRowMetadata = self._label_row_meta[label_hash]
         dataset = self._datasets[meta.dataset_hash]
         data_row = dataset.get_data_row(meta.data_hash)
-        self._label_rows[label_hash] = get_empty_label_row(meta, data_row, dataset.title)
+        self._label_rows[label_hash] = get_empty_label_row(
+            meta, data_row, dataset.title
+        )
         return self._label_rows[label_hash]
 
     def get_label_row(self, label_hash, get_signed_url: bool = False) -> LabelRow:
@@ -381,7 +400,9 @@ class LocalProject:
     def save_label_row(self, uid: str, label: LabelRow, batch: Optional[Batch] = None):
         label_hash: str = uid
         if uid not in self._label_rows:
-            raise ValueError("No label row with that uid. Call `LocalProject.create_label_row` first.")
+            raise ValueError(
+                "No label row with that uid. Call `LocalProject.create_label_row` first."
+            )
 
         self._label_rows[label_hash] = label
 
@@ -390,7 +411,11 @@ class LocalProject:
         label_row_json = json.dumps(raw_label)
         default_timestamp = "0"
 
-        connection = batch if batch is not None else PrismaConnection(self._project_file_structure)
+        connection = (
+            batch
+            if batch is not None
+            else PrismaConnection(self._project_file_structure)
+        )
 
         with connection as conn:  # type: ignore
             conn.labelrow.upsert(
@@ -402,13 +427,17 @@ class LocalProject:
                         "data_title": label.data_title,
                         "data_type": label.data_type.split("/")[0],
                         "created_at": label.get("created_at", default_timestamp),
-                        "last_edited_at": label.get("last_edited_at", default_timestamp),
+                        "last_edited_at": label.get(
+                            "last_edited_at", default_timestamp
+                        ),
                         "label_row_json": label_row_json,
                     },
                     "update": {
                         "label_hash": label.label_hash,
                         "data_title": label.data_title,
-                        "last_edited_at": label.get("last_edited_at", default_timestamp),
+                        "last_edited_at": label.get(
+                            "last_edited_at", default_timestamp
+                        ),
                         "label_row_json": label_row_json,
                     },
                 },
@@ -428,7 +457,9 @@ class LocalProject:
                         "data_hash": du_hash,
                         "data_title": label.data_title,
                         "frame": 0,  # FIXME: only used as images currently, will break for image groups and videos
-                        "data_uri": file_path_to_url(image_path, self._project_file_structure.project_dir),
+                        "data_uri": file_path_to_url(
+                            image_path, self._project_file_structure.project_dir
+                        ),
                         "lr_data_hash": label.data_hash,
                         "width": image.width,
                         "height": image.height,
@@ -469,7 +500,9 @@ class LocalUserClient:
     def get_dataset(self, dataset_hash: str) -> LocalDataset:
         return self.datasets[dataset_hash]
 
-    def create_ontology(self, title: str, description: str, structure: OntologyStructure) -> LocalOntology:
+    def create_ontology(
+        self, title: str, description: str, structure: OntologyStructure
+    ) -> LocalOntology:
         uid = str(uuid4())
         ontology = LocalOntology(uid, title, description, structure)
         self.ontologies[uid] = ontology
@@ -479,7 +512,11 @@ class LocalUserClient:
         return self.ontologies[ontology_hash]
 
     def create_project(
-        self, project_title: str, dataset_hashes: List[str], ontology_hash: str, description: str = ""
+        self,
+        project_title: str,
+        dataset_hashes: List[str],
+        ontology_hash: str,
+        description: str = "",
     ) -> LocalProject:
         ontology = self.get_ontology(ontology_hash)
         datasets = list(map(self.get_dataset, dataset_hashes))

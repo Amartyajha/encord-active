@@ -7,7 +7,9 @@ import plotly.graph_objects as go
 from sklearn import metrics
 
 
-def get_confusion_matrix(labels: list, predictions: list, class_names: list) -> go.Figure:
+def get_confusion_matrix(
+    labels: list, predictions: list, class_names: list
+) -> go.Figure:
     cm = metrics.confusion_matrix(labels, predictions)
 
     fig = px.imshow(
@@ -20,13 +22,15 @@ def get_confusion_matrix(labels: list, predictions: list, class_names: list) -> 
         y=class_names,
         aspect="auto",
     )
-    fig.update_traces(hovertemplate="<b>Real:</b> %{y}<br><b>Predicted:</b> %{x} <br>" "<b>Count:</b> %{z}")
+    fig.update_traces(
+        hovertemplate="<b>Real:</b> %{y}<br><b>Predicted:</b> %{x} <br>"
+        "<b>Count:</b> %{z}"
+    )
     fig.update_coloraxes(showscale=False)
     return fig
 
 
 def get_precision_recall_f1(labels: list, predictions: list) -> List[np.ndarray]:
-
     return metrics.precision_recall_fscore_support(labels, predictions, zero_division=0)
 
 
@@ -39,7 +43,9 @@ def get_roc_curve(labels: list, prediction_probs: list) -> go.Figure:
     pass
 
 
-def get_precision_recall_graph(precision: np.ndarray, recall: np.ndarray, class_names: List) -> go.Figure:
+def get_precision_recall_graph(
+    precision: np.ndarray, recall: np.ndarray, class_names: List
+) -> go.Figure:
     pr_df = pd.DataFrame(
         {
             "class": class_names + class_names,
@@ -60,5 +66,7 @@ def get_precision_recall_graph(precision: np.ndarray, recall: np.ndarray, class_
         color_discrete_sequence=["#5658dd", "#89e7b6"],
     )
     fig.update_traces(hovertemplate="<b>Score:</b> %{y}<br><b>Class:</b> %{x} <br>")
-    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig.update_layout(
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
     return fig

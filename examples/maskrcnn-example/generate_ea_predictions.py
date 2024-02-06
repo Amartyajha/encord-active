@@ -28,12 +28,16 @@ dataset_validation = EncordMaskRCNNDataset(
 )
 
 model = get_model_instance_segmentation(len(dataset_validation.coco.cats) + 1)
-model.load_state_dict(torch.load(params.inference.model_checkpoint_path, map_location=device))
+model.load_state_dict(
+    torch.load(params.inference.model_checkpoint_path, map_location=device)
+)
 model.to(device)
 
 model.eval()
 with torch.no_grad():
-    for img, _, img_metadata in tqdm(dataset_validation, desc="Generating Encord Predictions"):
+    for img, _, img_metadata in tqdm(
+        dataset_validation, desc="Generating Encord Predictions"
+    ):
         prediction = model([img.to(device)])
 
         scores_filter = prediction[0]["scores"] > params.inference.confidence_threshold
@@ -42,19 +46,31 @@ with torch.no_grad():
         scores = prediction[0]["scores"][scores_filter].detach().cpu().numpy()
 
         for ma, la, sc in zip(masks, labels, scores):
-            contours, hierarchy = cv2.findContours((ma[0] > 0.5).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+            contours, hierarchy = cv2.findContours(
+                (ma[0] > 0.5).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
+            )
             for contour in contours:
-                contour = contour.reshape(contour.shape[0], 2) / np.array([[ma.shape[2], ma.shape[1]]])
+                contour = contour.reshape(contour.shape[0], 2) / np.array(
+                    [[ma.shape[2], ma.shape[1]]]
+                )
                 prediction = Prediction(
                     data_hash=img_metadata[0]["data_hash"],
                     confidence=sc.item(),
                     object=ObjectDetection(
                         format=Format.POLYGON,
                         data=contour,
-                        feature_hash=encord_ontology["objects"][la.item() - 1]["featureNodeHash"],
+                        feature_hash=encord_ontology["objects"][la.item() - 1][
+                            "featureNodeHash"
+                        ],
                     ),
                 )
                 predictions_to_store.append(prediction)
 
-with open(os.path.join(params.inference.target_data_folder, f"predictions_{params.inference.wandb_id}.pkl"), "wb") as f:
+with open(
+    os.path.join(
+        params.inference.target_data_folder,
+        f"predictions_{params.inference.wandb_id}.pkl",
+    ),
+    "wb",
+) as f:
     pickle.dump(predictions_to_store, f)

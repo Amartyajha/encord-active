@@ -29,7 +29,9 @@ def create_outlier_distribution_chart(
     fig.add_trace(
         go.Bar(
             x=all_metrics_outliers_summary[AllMetricsOutlierSchema.metric_name],
-            y=all_metrics_outliers_summary[AllMetricsOutlierSchema.total_severe_outliers],
+            y=all_metrics_outliers_summary[
+                AllMetricsOutlierSchema.total_severe_outliers
+            ],
             name="Severe outliers",
             marker_color=severe_outlier_color,
         )
@@ -37,7 +39,9 @@ def create_outlier_distribution_chart(
     fig.add_trace(
         go.Bar(
             x=all_metrics_outliers_summary[AllMetricsOutlierSchema.metric_name],
-            y=all_metrics_outliers_summary[AllMetricsOutlierSchema.total_moderate_outliers],
+            y=all_metrics_outliers_summary[
+                AllMetricsOutlierSchema.total_moderate_outliers
+            ],
             name="Moderate outliers",
             marker_color=moderate_outlier_color,
         )
@@ -64,19 +68,30 @@ def create_labels_distribution_chart(
 
     Q2 = labels_df[LabelStatisticsSchema.count].quantile(0.5)
 
-    labels_df.loc[labels_df[LabelStatisticsSchema.count] <= (Q2 * 0.5), LabelStatisticsSchema.status] = True
+    labels_df.loc[
+        labels_df[LabelStatisticsSchema.count] <= (Q2 * 0.5),
+        LabelStatisticsSchema.status,
+    ] = True
 
     fig = go.Figure(
         data=[
             go.Bar(
-                x=labels_df.loc[labels_df[LabelStatisticsSchema.status] is False][LabelStatisticsSchema.name],
-                y=labels_df[labels_df[LabelStatisticsSchema.status] is False][LabelStatisticsSchema.count],
+                x=labels_df.loc[labels_df[LabelStatisticsSchema.status] is False][
+                    LabelStatisticsSchema.name
+                ],
+                y=labels_df[labels_df[LabelStatisticsSchema.status] is False][
+                    LabelStatisticsSchema.count
+                ],
                 name="representative",
                 marker_color="#3380FF",
             ),
             go.Bar(
-                x=labels_df.loc[labels_df[LabelStatisticsSchema.status] is True][LabelStatisticsSchema.name],
-                y=labels_df[labels_df[LabelStatisticsSchema.status] is True][LabelStatisticsSchema.count],
+                x=labels_df.loc[labels_df[LabelStatisticsSchema.status] is True][
+                    LabelStatisticsSchema.name
+                ],
+                y=labels_df[labels_df[LabelStatisticsSchema.status] is True][
+                    LabelStatisticsSchema.count
+                ],
                 name="undersampled",
                 marker_color="tomato",
             ),
@@ -107,9 +122,11 @@ def create_image_size_distribution_chart(image_sizes: np.ndarray) -> go.Figure:
 
 
 def create_2d_metric_chart(
-    metrics_df: DataFrame[CrossMetricSchema], x_axis_title: str, y_axis_title: str, show_trendline: bool = True
+    metrics_df: DataFrame[CrossMetricSchema],
+    x_axis_title: str,
+    y_axis_title: str,
+    show_trendline: bool = True,
 ) -> go.Figure:
-
     trendline = None
     if show_trendline:  # Check that it's possible to compute a trend line.
         trendline = (

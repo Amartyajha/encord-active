@@ -35,10 +35,14 @@ class SegmentationHead(nn.Module):
             param.requires_grad = False
 
         self.heads = nn.Sequential(
-            nn.Conv2d(21, 21 + (n_classes - 21) // 2, kernel_size=(1, 1), stride=(1, 1)),
+            nn.Conv2d(
+                21, 21 + (n_classes - 21) // 2, kernel_size=(1, 1), stride=(1, 1)
+            ),
             nn.LeakyReLU(),
             nn.Dropout2d(0.1),
-            nn.Conv2d(21 + (n_classes - 21) // 2, n_classes, kernel_size=(1, 1), stride=(1, 1)),
+            nn.Conv2d(
+                21 + (n_classes - 21) // 2, n_classes, kernel_size=(1, 1), stride=(1, 1)
+            ),
         )
 
     def forward(self, img):
@@ -75,7 +79,9 @@ class SegmentationHead(nn.Module):
 
 def get_batches(iterator, batch_size=6):
     width = height = 224
-    transforms = DeepLabV3_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1.transforms()
+    transforms = (
+        DeepLabV3_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1.transforms()
+    )
     transforms.resize_size = [width, height]
     name_to_idx = {"background": 0}
     idx_to_counts = {0: 0}
@@ -94,7 +100,10 @@ def get_batches(iterator, batch_size=6):
 
             p = obj["polygon"]
             polygon = np.array(
-                [(p[str(i)]["x"] * width, p[str(i)]["y"] * height) for i in range(len(p))],
+                [
+                    (p[str(i)]["x"] * width, p[str(i)]["y"] * height)
+                    for i in range(len(p))
+                ],
                 dtype=np.int32,
             )
 
@@ -121,9 +130,17 @@ def get_batches(iterator, batch_size=6):
         mask_list.append(torch.LongTensor(img_mask))
         key_list.append(iterator.get_identifier())
 
-    img_batches = [torch.stack(image_list[i : i + batch_size], dim=0) for i in range(0, len(image_list), batch_size)]
-    mask_batches = [torch.stack(mask_list[i : i + batch_size], dim=0) for i in range(0, len(mask_list), batch_size)]
-    key_batches = [key_list[i : i + batch_size] for i in range(0, len(key_list), batch_size)]
+    img_batches = [
+        torch.stack(image_list[i : i + batch_size], dim=0)
+        for i in range(0, len(image_list), batch_size)
+    ]
+    mask_batches = [
+        torch.stack(mask_list[i : i + batch_size], dim=0)
+        for i in range(0, len(mask_list), batch_size)
+    ]
+    key_batches = [
+        key_list[i : i + batch_size] for i in range(0, len(key_list), batch_size)
+    ]
     return list(zip(img_batches, mask_batches, key_batches)), idx_to_counts, name_to_idx
 
 
@@ -141,7 +158,9 @@ def get_prediction_statistics(logits):
 def train_model(model, model_path, batches):
     train_batches, val_batches = train_test_split(batches)
     optimizer = torch.optim.Adam(model.heads.parameters(), lr=1e-3)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95, last_epoch=-1)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer, gamma=0.95, last_epoch=-1
+    )
 
     criterion = nn.CrossEntropyLoss().to(DEVICE)
 
@@ -162,7 +181,9 @@ def train_model(model, model_path, batches):
             loss.backward()
             optimizer.step()
             train_loss_epoch += loss.item() / len(train_batches)
-            train_accuracy_epoch += (model_preds == labels).sum().item() / (len(train_batches) * labels.nelement())
+            train_accuracy_epoch += (model_preds == labels).sum().item() / (
+                len(train_batches) * labels.nelement()
+            )
 
         with torch.inference_mode():
             with model.mc_eval():
@@ -171,10 +192,14 @@ def train_model(model, model_path, batches):
                 for imgs, masks, keys in val_batches:
                     labels = masks.to(DEVICE)
                     logits = model(imgs.to(DEVICE)).squeeze()
-                    model_preds, mean_logits, entropy_map = get_prediction_statistics(logits)
+                    model_preds, mean_logits, entropy_map = get_prediction_statistics(
+                        logits
+                    )
                     loss = criterion(mean_logits, labels)
                     val_loss_epoch += loss.item() / len(val_batches)
-                    val_accuracy_epoch += (model_preds == labels).sum().item() / (len(val_batches) * labels.nelement())
+                    val_accuracy_epoch += (model_preds == labels).sum().item() / (
+                        len(val_batches) * labels.nelement()
+                    )
 
         scheduler.step()
 
@@ -189,7 +214,9 @@ def train_model(model, model_path, batches):
 
         print(f"---------------------------Epoch {epoch} ---------------------------")
         print(f"Train loss {train_loss_epoch} || Val loss {val_loss_epoch}")
-        print(f"Train accuracy {train_accuracy_epoch} || Val accuracy {val_accuracy_epoch}")
+        print(
+            f"Train accuracy {train_accuracy_epoch} || Val accuracy {val_accuracy_epoch}"
+        )
 
 
 class EntropyHeatmapMetric(Metric):
@@ -204,12 +231,16 @@ class EntropyHeatmapMetric(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        model_path = os.path.join(iterator.cache_dir, "models", f"{Path(__file__).stem}_model.pt")
+        model_path = os.path.join(
+            iterator.cache_dir, "models", f"{Path(__file__).stem}_model.pt"
+        )
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
         batches, idx_to_counts, name_to_idx = get_batches(iterator)
 
-        model = SegmentationHead(n_classes=len(idx_to_counts), n_train_samples=1, n_test_samples=10).to(DEVICE)
+        model = SegmentationHead(
+            n_classes=len(idx_to_counts), n_train_samples=1, n_test_samples=10
+        ).to(DEVICE)
 
         if not os.path.isfile(model_path):
             train_model(model, model_path, batches)
@@ -220,7 +251,9 @@ class EntropyHeatmapMetric(Metric):
                 pbar = tqdm.tqdm(total=len(batches), desc="Predicting uncertainty")
                 for imgs, masks, keys in batches:
                     logits = model(imgs.to(DEVICE)).squeeze()
-                    model_preds, mean_logits, entropy_map = get_prediction_statistics(logits)
+                    model_preds, mean_logits, entropy_map = get_prediction_statistics(
+                        logits
+                    )
 
                     for i, (k, ent) in enumerate(zip(keys, entropy_map)):
                         writer.write(

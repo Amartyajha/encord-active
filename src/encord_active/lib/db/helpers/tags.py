@@ -18,12 +18,20 @@ def from_grouped_tags(tags: GroupedTags) -> tuple[List[Tag], List[Tag]]:
     return data_tags, label_tags
 
 
-def populate_tags_with_nested_classifications(pfs: ProjectFileStructure, option_answer_hashes: set[str]):
+def populate_tags_with_nested_classifications(
+    pfs: ProjectFileStructure, option_answer_hashes: set[str]
+):
     with DBConnection(pfs) as conn:
         mm = MergedMetrics(conn).all()
     no_label_tag = Tag("no classification", TagScope.LABEL)
 
-    def update_label_tags(label: dict, base_key: str, identifier_key: str, answer_key: str, answer_dict: dict):
+    def update_label_tags(
+        label: dict,
+        base_key: str,
+        identifier_key: str,
+        answer_key: str,
+        answer_dict: dict,
+    ):
         label_identifier = label[identifier_key]
         label_hash = label[answer_key]
         key = f"{base_key}_{label_identifier}"
@@ -53,10 +61,18 @@ def populate_tags_with_nested_classifications(pfs: ProjectFileStructure, option_
     for du, _ in iterator.iterate(desc="Tagging Objects with nested classifications"):
         base_key = f"{iterator.label_hash}_{iterator.du_hash}_{iterator.frame:05d}"
         object_answers = iterator.label_rows[iterator.label_hash]["object_answers"]
-        classification_answers = iterator.label_rows[iterator.label_hash]["classification_answers"]
+        classification_answers = iterator.label_rows[iterator.label_hash][
+            "classification_answers"
+        ]
 
         for clf in du.get("labels", {}).get("classifications", []):
-            update_label_tags(clf, base_key, "featureHash", "classificationHash", classification_answers)
+            update_label_tags(
+                clf,
+                base_key,
+                "featureHash",
+                "classificationHash",
+                classification_answers,
+            )
 
         for obj in du.get("labels", {}).get("objects", []):
             update_label_tags(obj, base_key, "objectHash", "objectHash", object_answers)

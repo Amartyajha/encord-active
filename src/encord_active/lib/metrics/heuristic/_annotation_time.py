@@ -26,15 +26,23 @@ If no logs are available for a particular object, it will get score 0.""",
 
         for data_unit, _ in iterator.iterate(desc="Computing annotation times"):
             for obj in data_unit["labels"].get("objects", []):
-                object_label_logs = iterator.get_label_logs(object_hash=obj["objectHash"])
+                object_label_logs = iterator.get_label_logs(
+                    object_hash=obj["objectHash"]
+                )
 
                 if not object_label_logs:
                     writer.write(0.0, obj, description="No logs available.")
                     continue
 
-                times = map(lambda x: x.get("time_taken", None) or 0.0, object_label_logs)
-                writer.write(sum(times) / 1000, obj, description="Annotation time (seconds).")
+                times = map(
+                    lambda x: x.get("time_taken", None) or 0.0, object_label_logs
+                )
+                writer.write(
+                    sum(times) / 1000, obj, description="Annotation time (seconds)."
+                )
                 found_any = True
 
         if not found_any:
-            logger.info("<blue>[Note]</blue> Couldn't get any label logs. All objects will have score 0.")
+            logger.info(
+                "<blue>[Note]</blue> Couldn't get any label logs. All objects will have score 0."
+            )

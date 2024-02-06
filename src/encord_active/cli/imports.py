@@ -18,8 +18,16 @@ import_cli = typer.Typer(rich_markup_mode="markdown")
 @import_cli.command(name="predictions")
 @ensure_project()
 def import_predictions(
-    predictions_path: Path = typer.Argument(..., help="Path to a predictions file.", dir_okay=False, exists=True),
-    target: Path = typer.Option(Path.cwd(), "--target", "-t", help="Path to the target project.", file_okay=False),
+    predictions_path: Path = typer.Argument(
+        ..., help="Path to a predictions file.", dir_okay=False, exists=True
+    ),
+    target: Path = typer.Option(
+        Path.cwd(),
+        "--target",
+        "-t",
+        help="Path to the target project.",
+        file_okay=False,
+    ),
     coco: bool = typer.Option(False, help="Import a COCO results format file."),
 ):
     """
@@ -73,7 +81,11 @@ def import_project(
         rich_help_panel=ENCORD_RICH_PANEL,
     ),
     # COCO
-    coco: bool = typer.Option(False, help="Import a project from the COCO format.", rich_help_panel=COCO_RICH_PANEL),
+    coco: bool = typer.Option(
+        False,
+        help="Import a project from the COCO format.",
+        rich_help_panel=COCO_RICH_PANEL,
+    ),
     images: Optional[Path] = typer.Option(
         None,
         "--images",
@@ -113,7 +125,9 @@ def import_project(
 
     file_structure = ProjectFileStructure(target)
     if file_structure.project_meta.exists():
-        project_meta: ProjectMeta = yaml.safe_load(file_structure.project_meta.read_text())
+        project_meta: ProjectMeta = yaml.safe_load(
+            file_structure.project_meta.read_text()
+        )
         rich.print(
             Panel(
                 f"""Current working directory already contains a project named {project_meta['project_title']}
@@ -144,7 +158,9 @@ def import_project(
         elif not images:
             raise typer.BadParameter("`images` argument is missing")
 
-        project_path = import_coco_project(images, annotations, target, use_symlinks=symlinks)
+        project_path = import_coco_project(
+            images, annotations, target, use_symlinks=symlinks
+        )
     else:
         from encord_active.cli.utils.encord import import_encord_project
 
@@ -157,4 +173,6 @@ def import_project(
             store_data_locally,
         )
 
-    success_with_vizualise_command(project_path, "The data is downloaded and the metrics are complete.")
+    success_with_vizualise_command(
+        project_path, "The data is downloaded and the metrics are complete."
+    )

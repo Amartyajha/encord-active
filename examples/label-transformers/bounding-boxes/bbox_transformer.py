@@ -17,17 +17,26 @@ def get_meta_and_labels(label_files: List[Path], extension: str = ".json"):
         raise ValueError("No meta file provided")
     meta = json.loads(meta_file.read_text())["videos"]
 
-    label_files = [lf for lf in label_files if lf.suffix == extension and lf != meta_file]
+    label_files = [
+        lf for lf in label_files if lf.suffix == extension and lf != meta_file
+    ]
 
     return meta, label_files
 
 
 def label_file_to_image(label_file: Path) -> Path:
-    return label_file.parents[2] / "JPEGImages" / label_file.parent.name / f"{label_file.stem}.jpg"
+    return (
+        label_file.parents[2]
+        / "JPEGImages"
+        / label_file.parent.name
+        / f"{label_file.stem}.jpg"
+    )
 
 
 class BBoxTransformer(LabelTransformer):
-    def from_custom_labels(self, label_files: List[Path], data_files: List[Path]) -> List[DataLabel]:
+    def from_custom_labels(
+        self, label_files: List[Path], data_files: List[Path]
+    ) -> List[DataLabel]:
         meta, label_files = get_meta_and_labels(label_files, extension=".json")
 
         out = []
@@ -42,7 +51,9 @@ class BBoxTransformer(LabelTransformer):
                     DataLabel(
                         abs_data_path=image_file,
                         label=BoundingBoxLabel(
-                            class_=classes.get(instance_id, {}).get("category", "unknown"),
+                            class_=classes.get(instance_id, {}).get(
+                                "category", "unknown"
+                            ),
                             bounding_box=BoundingBox(**bbox),
                         ),
                     )

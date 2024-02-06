@@ -139,25 +139,45 @@ def read_item_ids(
     if scope == MetricScope.PREDICTION:
         if filters.prediction_filters is None:
             raise HTTPException(
-                status_code=422, detail='Filters must contain "prediction_filters" when scope is "prediction"'
+                status_code=422,
+                detail='Filters must contain "prediction_filters" when scope is "prediction"',
             )
         df, _ = get_model_predictions(project, filters.prediction_filters)
         df = apply_filters(df, filters, project, scope)
 
-        if filters.prediction_filters.outcome == ObjectDetectionOutcomeType.FALSE_NEGATIVES:
+        if (
+            filters.prediction_filters.outcome
+            == ObjectDetectionOutcomeType.FALSE_NEGATIVES
+        ):
             sort_by_metric = sort_by_metric.replace("(P)", "(O)")
 
         column = [col for col in df.columns if col.lower() == sort_by_metric.lower()][0]
-        df = df[partial_column(df.index, 3).isin(partial_column(merged_metrics.index, 3).unique())]
-        if filters.prediction_filters.outcome == ObjectDetectionOutcomeType.FALSE_NEGATIVES:
+        df = df[
+            partial_column(df.index, 3).isin(
+                partial_column(merged_metrics.index, 3).unique()
+            )
+        ]
+        if (
+            filters.prediction_filters.outcome
+            == ObjectDetectionOutcomeType.FALSE_NEGATIVES
+        ):
             df = df[df.index.isin(merged_metrics.index)]
     else:
-        column = [col for col in merged_metrics.columns if col.lower() == sort_by_metric.lower()][0]
+        column = [
+            col
+            for col in merged_metrics.columns
+            if col.lower() == sort_by_metric.lower()
+        ][0]
         df = merged_metrics
 
-    res: pd.DataFrame = df[[column]].dropna().sort_values(by=[column], ascending=ascending)
+    res: pd.DataFrame = (
+        df[[column]].dropna().sort_values(by=[column], ascending=ascending)
+    )
     if ids:
-        if filters.prediction_filters and filters.prediction_filters.type == MainPredictionType.OBJECT:
+        if (
+            filters.prediction_filters
+            and filters.prediction_filters.type == MainPredictionType.OBJECT
+        ):
             res = res[partial_column(res.index, 3).isin(ids)]
         else:
             res = res[res.index.isin(ids)]
@@ -190,7 +210,9 @@ def tagged_items(project: ProjectFileStructureDep):
         ).all()
         for label_hash, du_hash, frame, tag in data_tags:
             key = f"{label_hash}_{du_hash}_{frame:05d}"
-            identifier_tags.setdefault(key, GroupedTags(data=[], label=[]))["data"].append(tag)
+            identifier_tags.setdefault(key, GroupedTags(data=[], label=[]))[
+                "data"
+            ].append(tag)
         label_tags = sess.exec(
             select(  # type: ignore
                 ProjectDataMetadata.label_hash,
@@ -211,28 +233,37 @@ def tagged_items(project: ProjectFileStructureDep):
         for label_hash, du_hash, frame, annotation_hash, tag in label_tags:
             data_key = f"{label_hash}_{du_hash}_{frame:05d}"
             label_key = f"{data_key}_{annotation_hash}"
-            du_tags = identifier_tags.setdefault(data_key, GroupedTags(data=[], label=[]))
+            du_tags = identifier_tags.setdefault(
+                data_key, GroupedTags(data=[], label=[])
+            )
             if tag not in du_tags["label"]:
                 du_tags["label"].append(tag)
-            identifier_tags.setdefault(label_key, GroupedTags(data=du_tags["data"], label=[]))["label"].append(tag)
+            identifier_tags.setdefault(
+                label_key, GroupedTags(data=du_tags["data"], label=[])
+            )["label"].append(tag)
     return identifier_tags
 
 
 @router.get("/{project}/local-fs/{lr_hash}/{du_hash}/{frame}")
-def server_local_fs_file(project: ProjectFileStructureDep, lr_hash: str, du_hash: str, frame: int):
+def server_local_fs_file(
+    project: ProjectFileStructureDep, lr_hash: str, du_hash: str, frame: int
+):
     label_row_structure = project.label_row_structure(lr_hash)
-    data_opt = next(label_row_structure.iter_data_unit(du_hash, int(frame)), None) or next(
-        label_row_structure.iter_data_unit(du_hash, None), None
-    )
+    data_opt = next(
+        label_row_structure.iter_data_unit(du_hash, int(frame)), None
+    ) or next(label_row_structure.iter_data_unit(du_hash, None), None)
     if data_opt is not None:
         signed_url = data_opt.signed_url
-        file_path = url_to_file_path(signed_url, label_row_structure.project.project_dir)
+        file_path = url_to_file_path(
+            signed_url, label_row_structure.project.project_dir
+        )
         if file_path is not None:
             return FileResponse(file_path)
 
     debug_id = f"{lr_hash}_{du_hash}_{frame}"
     raise HTTPException(
-        status_code=404, detail=f'Local resource with id "{debug_id}" was not found for project "{project}"'
+        status_code=404,
+        detail=f'Local resource with id "{debug_id}" was not found for project "{project}"',
     )
 
 
@@ -285,22 +316,38 @@ def append_tags_to_row(project: ProjectFileStructureDep, row: dict):
 
 
 @router.get("/{project}/items/{id:path}")
-def read_item(project: ProjectFileStructureDep, id: str, is_prediction: bool = False, iou: Optional[float] = None):
+def read_item(
+    project: ProjectFileStructureDep,
+    id: str,
+    is_prediction: bool = False,
+    iou: Optional[float] = None,
+):
     lr_hash, du_hash, frame, *object_hash = id.split("_")
 
     if is_prediction:
         row = get_model_prediction_by_id(project, id, iou)
         if not row:
             raise HTTPException(
-                status_code=404, detail=f'Prediction with id "{id}" was not found for project "{project}"'
+                status_code=404,
+                detail=f'Prediction with id "{id}" was not found for project "{project}"',
             )
-        return to_item(row, project, lr_hash, du_hash, frame, object_hash[0] if len(object_hash) else None)
+        return to_item(
+            row,
+            project,
+            lr_hash,
+            du_hash,
+            frame,
+            object_hash[0] if len(object_hash) else None,
+        )
 
     with DBConnection(project) as conn:
         rows = MergedMetrics(conn).get_row(id).dropna(axis=1).to_dict("records")
 
         if not rows:
-            raise HTTPException(status_code=404, detail=f'Item with id "{id}" was not found for project "{project}"')
+            raise HTTPException(
+                status_code=404,
+                detail=f'Item with id "{id}" was not found for project "{project}"',
+            )
 
         row = rows[0]
 
@@ -323,7 +370,8 @@ def sign_url(project: ProjectFileStructureDep, id: str):
         signed_url = images[0]["file_link"]
     else:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not a valid entity for signed url"
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Not a valid entity for signed url",
         )
 
     label_row_structure.project.cached_signed_urls[du_hash] = signed_url
@@ -336,12 +384,16 @@ class ItemTags(BaseModel):
 
 
 @overload
-def _get_selector(item: ItemTags, annotation_hash: Literal[False]) -> Optional[tuple[uuid.UUID, int]]:
+def _get_selector(
+    item: ItemTags, annotation_hash: Literal[False]
+) -> Optional[tuple[uuid.UUID, int]]:
     ...
 
 
 @overload
-def _get_selector(item: ItemTags, annotation_hash: Literal[True]) -> Optional[tuple[uuid.UUID, int, str]]:
+def _get_selector(
+    item: ItemTags, annotation_hash: Literal[True]
+) -> Optional[tuple[uuid.UUID, int, str]]:
     ...
 
 
@@ -365,7 +417,9 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
         project_tags = {
             r[0]: r[1]
             for r in sess.exec(
-                select(ProjectTag.name, ProjectTag.tag_hash).where(ProjectTag.project_hash == project_hash)
+                select(ProjectTag.name, ProjectTag.tag_hash).where(
+                    ProjectTag.project_hash == project_hash
+                )
             ).all()
         }
 
@@ -386,18 +440,29 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
             project_tags[name] = new_tag_hash
             return new_tag_hash
 
-        data_selectors = set(filter(None, map(partial(_get_selector, annotation_hash=False), payload)))
+        data_selectors = set(
+            filter(None, map(partial(_get_selector, annotation_hash=False), payload))
+        )
         existing_data_tag_tuples = sess.exec(
-            select(ProjectTaggedDataUnit.du_hash, ProjectTaggedDataUnit.frame, ProjectTaggedDataUnit.tag_hash).where(
+            select(
+                ProjectTaggedDataUnit.du_hash,
+                ProjectTaggedDataUnit.frame,
+                ProjectTaggedDataUnit.tag_hash,
+            ).where(
                 ProjectTaggedDataUnit.project_hash == project_hash,
-                in_op(tuple_(ProjectTaggedDataUnit.du_hash, ProjectTaggedDataUnit.frame), data_selectors),
+                in_op(
+                    tuple_(ProjectTaggedDataUnit.du_hash, ProjectTaggedDataUnit.frame),
+                    data_selectors,
+                ),
             )
         ).all()
         existing_data_tags: dict[tuple[uuid.UUID, int], set[uuid.UUID]] = {}
         for du_hash, frame, tag_hash in existing_data_tag_tuples:
             existing_data_tags.setdefault((du_hash, frame), set()).add(tag_hash)
 
-        label_selectors = set(filter(None, map(partial(_get_selector, annotation_hash=True), payload)))
+        label_selectors = set(
+            filter(None, map(partial(_get_selector, annotation_hash=True), payload))
+        )
         existing_label_tag_tuples = sess.exec(
             select(
                 ProjectTaggedAnnotation.du_hash,
@@ -418,13 +483,16 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
         ).all()
         existing_label_tags: dict[tuple[uuid.UUID, int, str], set[uuid.UUID]] = {}
         for du_hash, frame, object_hash, tag_hash in existing_label_tag_tuples:
-            existing_label_tags.setdefault((du_hash, frame, object_hash), set()).add(tag_hash)
+            existing_label_tags.setdefault((du_hash, frame, object_hash), set()).add(
+                tag_hash
+            )
 
         data_exists = set()
         label_exists = set()
 
         data_tags_to_add: list[ProjectTaggedDataUnit] = []
-        data_tags_to_remove: set[tuple[uuid.UUID, int, uuid.UUID]] = set()  # du_hash, frame, tag_hash
+        # du_hash, frame, tag_hash
+        data_tags_to_remove: set[tuple[uuid.UUID, int, uuid.UUID]] = set()
         annotation_tags_to_add: list[ProjectTaggedAnnotation] = []
         annotation_tags_to_remove: set[
             tuple[uuid.UUID, int, str, uuid.UUID]
@@ -458,7 +526,9 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
                 set(
                     [
                         (du_hash, frame, tag_hash)
-                        for tag_hash in existing_data_tags.get((du_hash, frame), set()).difference(new_data_tag_uuids)
+                        for tag_hash in existing_data_tags.get(
+                            (du_hash, frame), set()
+                        ).difference(new_data_tag_uuids)
                     ]
                 )
             )
@@ -472,7 +542,9 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
                         continue
                     new_label_tag_uuids.add(tag_hash)
                     label_exists.add(dup_key2)
-                    if tag_hash in existing_label_tags.get((du_hash, frame, annotation_hash), set()):
+                    if tag_hash in existing_label_tags.get(
+                        (du_hash, frame, annotation_hash), set()
+                    ):
                         continue
                     annotation_tags_to_add.append(
                         ProjectTaggedAnnotation(
@@ -506,7 +578,9 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
                     ProjectTaggedDataUnit.project_hash == project_hash,
                     in_op(
                         tuple_(
-                            ProjectTaggedDataUnit.du_hash, ProjectTaggedDataUnit.frame, ProjectTaggedDataUnit.tag_hash
+                            ProjectTaggedDataUnit.du_hash,
+                            ProjectTaggedDataUnit.frame,
+                            ProjectTaggedDataUnit.tag_hash,
                         ),
                         data_tags_to_remove,
                     ),
@@ -532,14 +606,19 @@ def tag_items(project: ProjectFileStructureDep, payload: List[ItemTags]):
 
 
 @router.get("/{project}/has_similarity_search")
-def get_has_similarity_search(project: ProjectFileStructureDep, embedding_type: EmbeddingType):
+def get_has_similarity_search(
+    project: ProjectFileStructureDep, embedding_type: EmbeddingType
+):
     finder = get_similarity_finder(embedding_type, project)
     return finder.index_available
 
 
 @router.get("/{project}/similarities/{id}")
 def get_similar_items(
-    project: ProjectFileStructureDep, id: str, embedding_type: EmbeddingType, page_size: Optional[int] = None
+    project: ProjectFileStructureDep,
+    id: str,
+    embedding_type: EmbeddingType,
+    page_size: Optional[int] = None,
 ):
     finder = get_similarity_finder(embedding_type, project)
     if embedding_type == EmbeddingType.IMAGE:
@@ -552,14 +631,20 @@ def get_available_metrics(
     project: ProjectFileStructureDep,
     scope: Optional[MetricScope] = None,
     prediction_type: Optional[MainPredictionType] = None,
-    prediction_outcome: Optional[Union[ClassificationOutcomeType, ObjectDetectionOutcomeType]] = None,
+    prediction_outcome: Optional[
+        Union[ClassificationOutcomeType, ObjectDetectionOutcomeType]
+    ] = None,
 ):
     if scope == MetricScope.PREDICTION:
         if prediction_type is None:
             raise ValueError("Prediction metrics requires prediction type")
-        prediction_metrics, label_metrics, *_ = read_prediction_files(project, prediction_type)
+        prediction_metrics, label_metrics, *_ = read_prediction_files(
+            project, prediction_type
+        )
         metrics = (
-            label_metrics if prediction_outcome == ObjectDetectionOutcomeType.FALSE_NEGATIVES else prediction_metrics
+            label_metrics
+            if prediction_outcome == ObjectDetectionOutcomeType.FALSE_NEGATIVES
+            else prediction_metrics
         )
     else:
         metrics = load_project_metrics(project)
@@ -569,17 +654,23 @@ def get_available_metrics(
         MetricScope.ANNOTATION: [],
         MetricScope.PREDICTION: [],
     }
-    for metric in natsorted(filter(filter_none_empty_metrics, metrics), key=lambda metric: metric.name):
+    for metric in natsorted(
+        filter(filter_none_empty_metrics, metrics), key=lambda metric: metric.name
+    ):
         prediction_metric = "predictions" in metric.path.as_posix()
         label_outcome = prediction_outcome == ObjectDetectionOutcomeType.FALSE_NEGATIVES
         if metric.name in ["Object Count", "Frame object density"]:
-            if (label_outcome and prediction_metric) or (not label_outcome and not prediction_metric):
+            if (label_outcome and prediction_metric) or (
+                not label_outcome and not prediction_metric
+            ):
                 continue
 
         metric_result = {
             "name": metric.name,
             "embeddingType": get_embedding_type(metric.meta.annotation_type),
-            "range": Range(min=metric.meta.stats.min_value, max=metric.meta.stats.max_value),
+            "range": Range(
+                min=metric.meta.stats.min_value, max=metric.meta.stats.max_value
+            ),
         }
         if metric.level == "F":
             results[MetricScope.DATA].append(metric_result)
@@ -603,29 +694,39 @@ def get_available_prediction_types(project: ProjectFileStructureDep):
     return [
         prediction_type
         for prediction_type in MainPredictionType
-        if check_model_prediction_availability(project.predictions / prediction_type.value)
+        if check_model_prediction_availability(
+            project.predictions / prediction_type.value
+        )
     ]
 
 
 @router.post("/{project}/2d_embeddings", response_class=ORJSONResponse)
 def get_2d_embeddings(
-    project: ProjectFileStructureDep, embedding_type: Annotated[EmbeddingType, Body()], filters: Filters
+    project: ProjectFileStructureDep,
+    embedding_type: Annotated[EmbeddingType, Body()],
+    filters: Filters,
 ):
     embeddings_df = get_2d_embedding_data(project, embedding_type)
 
     if embeddings_df is None:
         raise HTTPException(
-            status_code=404, detail=f'Embeddings of type "{embedding_type}" were not found for project "{project}"'
+            status_code=404,
+            detail=f'Embeddings of type "{embedding_type}" were not found for project "{project}"',
         )
 
     filtered = filtered_merged_metrics(project, filters)
 
     embeddings_df.set_index("identifier", inplace=True)
-    embeddings_df = cast(DataFrame[Embedding2DSchema], embeddings_df[embeddings_df.index.isin(filtered.index)])
+    embeddings_df = cast(
+        DataFrame[Embedding2DSchema],
+        embeddings_df[embeddings_df.index.isin(filtered.index)],
+    )
 
     if filters.prediction_filters is not None:
         embeddings_df["data_row_id"] = partial_column(embeddings_df.index, 3)
-        predictions, labels = get_model_predictions(project, PredictionsFilters(type=filters.prediction_filters.type))
+        predictions, labels = get_model_predictions(
+            project, PredictionsFilters(type=filters.prediction_filters.type)
+        )
 
         if filters.prediction_filters.type == MainPredictionType.OBJECT:
             labels = labels[[LabelMatchSchema.is_false_negative]]
@@ -635,11 +736,16 @@ def get_2d_embeddings(
             labels.drop(LabelMatchSchema.is_false_negative, axis=1, inplace=True)
             predictions = predictions[[PredictionMatchSchema.is_true_positive]].copy()
             predictions["data_row_id"] = partial_column(predictions.index, 3)
-            predictions.rename(columns={PredictionMatchSchema.is_true_positive: "score"}, inplace=True)
+            predictions.rename(
+                columns={PredictionMatchSchema.is_true_positive: "score"}, inplace=True
+            )
 
             merged_score = pd.concat([labels, predictions], axis=0)
             grouped_score = (
-                merged_score.groupby("data_row_id")[Embedding2DScoreSchema.score].mean().to_frame().reset_index()
+                merged_score.groupby("data_row_id")[Embedding2DScoreSchema.score]
+                .mean()
+                .to_frame()
+                .reset_index()
             )
             embeddings_df = cast(
                 DataFrame[Embedding2DSchema],
@@ -648,7 +754,9 @@ def get_2d_embeddings(
                 .rename({"data_row_id": "identifier"}, axis=1),
             )
         else:
-            predictions = predictions[[ClassificationPredictionMatchSchema.is_true_positive]]
+            predictions = predictions[
+                [ClassificationPredictionMatchSchema.is_true_positive]
+            ]
             predictions["data_row_id"] = partial_column(predictions.index, 3)
 
             embeddings_df = cast(
@@ -664,11 +772,17 @@ def get_2d_embeddings(
             )
 
             embeddings_df["score"] = embeddings_df[Embedding2DSchema.label]
-            embeddings_df[Embedding2DSchema.label] = embeddings_df[Embedding2DSchema.label].apply(
+            embeddings_df[Embedding2DSchema.label] = embeddings_df[
+                Embedding2DSchema.label
+            ].apply(
                 lambda x: "Correct Classification" if x == 1.0 else "Misclassification"
             )
 
-    return ORJSONResponse(embeddings_df.reset_index().rename({"identifier": "id"}, axis=1).to_dict("records"))
+    return ORJSONResponse(
+        embeddings_df.reset_index()
+        .rename({"identifier": "id"}, axis=1)
+        .to_dict("records")
+    )
 
 
 @cached(cache=LRUCache(maxsize=10))
@@ -705,7 +819,10 @@ def search(
     scope: Annotated[Optional[MetricScope], Form()] = None,
 ):
     if not (query or (image is not None)):
-        raise HTTPException(status_code=422, detail="Invalid query. Either `query` or `image` should be specified")
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid query. Either `query` or `image` should be specified",
+        )
 
     if filters:
         _filters = Filters.parse_raw(filters)
@@ -736,11 +853,15 @@ def search(
         return [item.identifier for item in result.result_identifiers], snippet
 
     if scope == MetricScope.PREDICTION and _filters.prediction_filters is not None:
-        _, _, predictions, _ = read_prediction_files(project, _filters.prediction_filters.type)
+        _, _, predictions, _ = read_prediction_files(
+            project, _filters.prediction_filters.type
+        )
         if predictions is not None:
             ids, snippet = _search(get_ids(predictions["identifier"], scope))
             prediction_ids = predictions["identifier"].sort_values(
-                key=lambda column: partial_column(column, 3).map(lambda id: ids.index(id))
+                key=lambda column: partial_column(column, 3).map(
+                    lambda id: ids.index(id)
+                )
             )
             return {"ids": prediction_ids.to_list(), "snippet": snippet}
 
@@ -758,19 +879,27 @@ class CreateSubsetJSON(BaseModel):
 
 
 @router.post("/{project}/create_subset")
-def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateSubsetJSON):
+def create_subset(
+    curr_project_structure: ProjectFileStructureDep, item: CreateSubsetJSON
+):
     if get_settings().ENV == "sandbox":
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Subsetting is not allowed in the current environment"
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Subsetting is not allowed in the current environment",
         )
     project_title = item.project_title
     project_description = item.project_description
     dataset_title = item.dataset_title
     dataset_description = item.dataset_description
-    filtered_df = filtered_merged_metrics(curr_project_structure, item.filters).reset_index()
+    filtered_df = filtered_merged_metrics(
+        curr_project_structure, item.filters
+    ).reset_index()
     if len(item.ids):
         filtered_df = filtered_df[filtered_df["identifier"].isin(item.ids)]
-    target_project_dir = curr_project_structure.project_dir.parent / project_title.lower().replace(" ", "-")
+    target_project_dir = (
+        curr_project_structure.project_dir.parent
+        / project_title.lower().replace(" ", "-")
+    )
     target_project_structure = ProjectFileStructure(target_project_dir)
     current_project_meta = curr_project_structure.load_project_meta()
     remote_copy = current_project_meta.get("has_remote", False)
@@ -781,15 +910,23 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
 
     try:
         ids_df = filtered_df["identifier"].str.split("_", n=4, expand=True)
-        filtered_lr_du = {LabelRowDataUnit(label_row, data_unit) for label_row, data_unit in zip(ids_df[0], ids_df[1])}
+        filtered_lr_du = {
+            LabelRowDataUnit(label_row, data_unit)
+            for label_row, data_unit in zip(ids_df[0], ids_df[1])
+        }
         filtered_label_rows = {lr_du.label_row for lr_du in filtered_lr_du}
         filtered_data_hashes = {lr_du.data_unit for lr_du in filtered_lr_du}
-        filtered_labels = {(ids[1][0], ids[1][1], ids[1][3] if len(ids[1]) > 3 else None) for ids in ids_df.iterrows()}
+        filtered_labels = {
+            (ids[1][0], ids[1][1], ids[1][3] if len(ids[1]) > 3 else None)
+            for ids in ids_df.iterrows()
+        }
 
         create_filtered_db(target_project_dir, filtered_df)
 
         if curr_project_structure.image_data_unit.exists():
-            copy_image_data_unit_json(curr_project_structure, target_project_structure, filtered_data_hashes)
+            copy_image_data_unit_json(
+                curr_project_structure, target_project_structure, filtered_data_hashes
+            )
 
         filtered_label_row_meta = copy_label_row_meta_json(
             curr_project_structure, target_project_structure, filtered_label_rows
@@ -807,10 +944,14 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
             final_data_version=202306141750,
         )
 
-        create_filtered_metrics(curr_project_structure, target_project_structure, filtered_df)
+        create_filtered_metrics(
+            curr_project_structure, target_project_structure, filtered_df
+        )
 
         # Only run data-migrations up-to just before global db migration script
-        ensure_safe_project(target_project_structure.project_dir, final_data_version=202306141750)
+        ensure_safe_project(
+            target_project_structure.project_dir, final_data_version=202306141750
+        )
         copy_filtered_data(
             curr_project_structure,
             target_project_structure,
@@ -820,16 +961,23 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
         )
 
         create_filtered_embeddings(
-            curr_project_structure, target_project_structure, filtered_label_rows, filtered_data_hashes, filtered_df
+            curr_project_structure,
+            target_project_structure,
+            filtered_label_rows,
+            filtered_data_hashes,
+            filtered_df,
         )
 
         if remote_copy:
             original_project = get_encord_project(
-                current_project_meta["ssh_key_path"], current_project_meta["project_hash"]
+                current_project_meta["ssh_key_path"],
+                current_project_meta["project_hash"],
             )
             dataset_hash_map: dict[str, set[str]] = {}
             for k, v in filtered_label_row_meta.items():
-                dataset_hash_map.setdefault(v["dataset_hash"], set()).add(v["data_hash"])
+                dataset_hash_map.setdefault(v["dataset_hash"], set()).add(
+                    v["data_hash"]
+                )
 
             cloned_project_hash = original_project.copy_project(
                 new_title=project_title,
@@ -839,18 +987,25 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
                     action=CopyDatasetAction.CLONE,
                     dataset_title=dataset_title,
                     dataset_description=dataset_description,
-                    datasets_to_data_hashes_map={k: list(v) for k, v in dataset_hash_map.items()},
+                    datasets_to_data_hashes_map={
+                        k: list(v) for k, v in dataset_hash_map.items()
+                    },
                 ),
                 copy_labels=CopyLabelsOptions(
                     accepted_label_statuses=[state for state in ReviewApprovalState],
                     accepted_label_hashes=list(label_rows),
                 ),
             )
-            cloned_project = get_encord_project(current_project_meta["ssh_key_path"], cloned_project_hash)
+            cloned_project = get_encord_project(
+                current_project_meta["ssh_key_path"], cloned_project_hash
+            )
             cloned_project_label_rows = [
-                cloned_project.get_label_row(src_row.label_hash) for src_row in cloned_project.list_label_rows_v2()
+                cloned_project.get_label_row(src_row.label_hash)
+                for src_row in cloned_project.list_label_rows_v2()
             ]
-            filtered_du_lr_mapping = {lrdu.data_unit: lrdu.label_row for lrdu in filtered_lr_du}
+            filtered_du_lr_mapping = {
+                lrdu.data_unit: lrdu.label_row for lrdu in filtered_lr_du
+            }
 
             def _get_one_data_unit(lr: dict, valid_data_units: dict) -> str:
                 data_units = lr["data_units"]
@@ -864,7 +1019,9 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
             lr_du_mapping = {
                 # We only use the label hash as the key for database migration. The data hashes are preserved anyway.
                 LabelRowDataUnit(
-                    filtered_du_lr_mapping[_get_one_data_unit(lr, filtered_du_lr_mapping)],
+                    filtered_du_lr_mapping[
+                        _get_one_data_unit(lr, filtered_du_lr_mapping)
+                    ],
                     lr["data_hash"],  # This value is the same
                 ): LabelRowDataUnit(lr["label_hash"], lr["data_hash"])
                 for lr in cloned_project_label_rows
@@ -873,11 +1030,16 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
             with PrismaConnection(target_project_structure) as conn:
                 original_label_rows = conn.labelrow.find_many()
             original_label_row_map = {
-                original_label_row.label_hash: json.loads(original_label_row.label_row_json or "")
+                original_label_row.label_hash: json.loads(
+                    original_label_row.label_row_json or ""
+                )
                 for original_label_row in original_label_rows
             }
 
-            new_label_row_map = {label_row["label_hash"]: label_row for label_row in cloned_project_label_rows}
+            new_label_row_map = {
+                label_row["label_hash"]: label_row
+                for label_row in cloned_project_label_rows
+            }
 
             label_row_json_map = {}
             for (old_lr, old_du), (new_lr, new_du) in lr_du_mapping.items():
@@ -906,27 +1068,36 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
             replace_db_uids(
                 target_project_structure,
                 du_hash_map=DataHashMapping(),  # Preserved and used as migration key
-                lr_du_mapping=lr_du_mapping,  # Update label hash and lr_dr hashes ( label hash)
-                label_row_json_map=label_row_json_map,  # Update label row jsons to correct value.
+                # Update label hash and lr_dr hashes ( label hash)
+                lr_du_mapping=lr_du_mapping,
+                # Update label row jsons to correct value.
+                label_row_json_map=label_row_json_map,
             )
         else:
             # Replace all label hashes with different values, to bypass the label_hash unique constraint bug
             # this will regenerate a unique label hash and dataset hash for the subset project.
-            new_project_hash = target_project_structure.load_project_meta()["project_hash"]
+            new_project_hash = target_project_structure.load_project_meta()[
+                "project_hash"
+            ]
             dataset_hash = str(uuid.uuid4())
             with PrismaConnection(target_project_structure) as prisma_conn:
                 prisma_label_rows = prisma_conn.labelrow.find_many()
                 lh_map: Dict[str, str] = {
-                    label_row.label_hash or "": str(uuid.uuid4()) for label_row in prisma_label_rows
+                    label_row.label_hash or "": str(uuid.uuid4())
+                    for label_row in prisma_label_rows
                 }
                 lr_du_mapping = {
-                    LabelRowDataUnit(label_row.label_hash or "", label_row.data_hash): LabelRowDataUnit(
+                    LabelRowDataUnit(
+                        label_row.label_hash or "", label_row.data_hash
+                    ): LabelRowDataUnit(
                         lh_map[label_row.label_hash or ""], label_row.data_hash
                     )
                     for label_row in prisma_label_rows
                 }
                 label_row_json_map_2: Dict[str, dict] = {
-                    lh_map[label_row.label_hash or ""]: json.loads(label_row.label_row_json or "")
+                    lh_map[label_row.label_hash or ""]: json.loads(
+                        label_row.label_row_json or ""
+                    )
                     for label_row in prisma_label_rows
                 }
                 for label_hash, label_row_json in label_row_json_map_2.items():
@@ -944,7 +1115,9 @@ def create_subset(curr_project_structure: ProjectFileStructureDep, item: CreateS
                 target_project_structure,
                 du_hash_map=DataHashMapping(),
                 lr_du_mapping=lr_du_mapping,
-                label_row_json_map={k: json.dumps(v) for k, v in label_row_json_map_2.items()},
+                label_row_json_map={
+                    k: json.dumps(v) for k, v in label_row_json_map_2.items()
+                },
                 refresh=False,  # Not a remote project running the migration
             )
 
@@ -979,7 +1152,8 @@ def upload_to_encord(
 ):
     if get_settings().ENV in ["sandbox", "production"]:
         raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Uploading is not allowed in the current environment"
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Uploading is not allowed in the current environment",
         )
 
     old_project_meta = pfs.load_project_meta()
@@ -990,14 +1164,17 @@ def upload_to_encord(
     encord_actions = EncordActions(pfs.project_dir, app_config.get_ssh_key())
     try:
         dataset_creation_result = encord_actions.create_dataset(
-            dataset_title=item.dataset_title, dataset_description=item.dataset_description, dataset_df=df
+            dataset_title=item.dataset_title,
+            dataset_description=item.dataset_description,
+            dataset_df=df,
         )
     except DatasetUniquenessError as e:
         return None
 
     # FIXME: existing logic re-uses 'ontology_hash'
     ontology_hash = encord_actions.create_ontology(
-        title=item.ontology_title or item.project_title, description=item.ontology_description or ""
+        title=item.ontology_title or item.project_title,
+        description=item.ontology_description or "",
     ).ontology_hash
 
     try:
@@ -1021,7 +1198,9 @@ def upload_to_encord(
         with Session(engine) as sess:
             # The project name has to be reverted to the same value
             # Update some metadata
-            new_db = sess.exec(select(Project).where(Project.project_hash == new_project_hash)).first()
+            new_db = sess.exec(
+                select(Project).where(Project.project_hash == new_project_hash)
+            ).first()
             if new_db is None:
                 raise ValueError("Missing new project in the database when uploading")
             new_db.project_name = old_project_name
@@ -1048,14 +1227,26 @@ def _download_task(pfs: ProjectFileStructure, project_name: str):
 
 @router.get("/{project}/download_sandbox")
 def download_sandbox_project(project: str, background_tasks: BackgroundTasks):
-    sandbox_projects = available_prebuilt_projects(get_settings().AVAILABLE_SANDBOX_PROJECTS)
+    sandbox_projects = available_prebuilt_projects(
+        get_settings().AVAILABLE_SANDBOX_PROJECTS
+    )
     sandbox_project = next(
-        (sandbox_project for sandbox_project in sandbox_projects.values() if sandbox_project["hash"] == project), None
+        (
+            sandbox_project
+            for sandbox_project in sandbox_projects.values()
+            if sandbox_project["hash"] == project
+        ),
+        None,
     )
     if not sandbox_project:
-        raise HTTPException(status_code=404, detail=f'Sandbox project with hash "{project}" was not found')
+        raise HTTPException(
+            status_code=404,
+            detail=f'Sandbox project with hash "{project}" was not found',
+        )
 
-    pfs = ProjectFileStructure(get_settings().SERVER_START_PATH / sandbox_project["name"])
+    pfs = ProjectFileStructure(
+        get_settings().SERVER_START_PATH / sandbox_project["name"]
+    )
 
     with Session(engine) as sess:
         sess.add(

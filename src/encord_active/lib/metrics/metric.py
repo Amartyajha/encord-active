@@ -47,7 +47,9 @@ class MetricMetadata(BaseModel):
     stats: StatsMetadata
 
     def get_unique_name(self):
-        name_hash = md5((self.title + self.short_description + self.long_description).encode()).hexdigest()
+        name_hash = md5(
+            (self.title + self.short_description + self.long_description).encode()
+        ).hexdigest()
         return f"{name_hash[:8]}_{self.title.lower().replace(' ', '_')}"
 
 

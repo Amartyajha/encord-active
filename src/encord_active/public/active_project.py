@@ -32,7 +32,11 @@ class DataUnitItem:
     frame: int
 
 
-AnalyticsModel = Union[Type[ProjectDataAnalytics], Type[ProjectPredictionAnalytics], Type[ProjectAnnotationAnalytics]]
+AnalyticsModel = Union[
+    Type[ProjectDataAnalytics],
+    Type[ProjectPredictionAnalytics],
+    Type[ProjectAnnotationAnalytics],
+]
 
 
 def get_active_engine(path_to_db: Union[str, Path]) -> Engine:
@@ -47,21 +51,32 @@ class ActiveProject:
         engine = get_active_engine(db_file_path)
         return ActiveProject(engine, project_name, root_path=path.parent)
 
-    def __init__(self, engine: Optional[Engine], project_name: str, root_path: Optional[Path] = None):
+    def __init__(
+        self,
+        engine: Optional[Engine],
+        project_name: str,
+        root_path: Optional[Path] = None,
+    ):
         self._engine = engine
         self._project_name = project_name
         self._root_path = root_path
 
         with Session(self._engine) as sess:
             res = sess.exec(
-                select(_P.project_hash, _P.project_ontology).where(_P.project_name == project_name).limit(1)
+                select(_P.project_hash, _P.project_ontology)
+                .where(_P.project_name == project_name)
+                .limit(1)
             ).first()
 
             if res is None:
-                raise ValueError(f"Couldn't find project with name `{project_name}` in the DB.")
+                raise ValueError(
+                    f"Couldn't find project with name `{project_name}` in the DB."
+                )
 
             self.project_hash, ontology = res
-            project_tuples = sess.exec(select(_T.name, _T.tag_hash).where(_T.project_hash == self.project_hash)).all()
+            project_tuples = sess.exec(
+                select(_T.name, _T.tag_hash).where(_T.project_hash == self.project_hash)
+            ).all()
 
             # Assuming that there's just one prediction model
             # FIXME: With multiple sets of model predictions, we should select the right UUID here
@@ -79,7 +94,9 @@ class ActiveProject:
         return self.ontology
 
     def _join_path_statement(self, stmt, base_model: AnalyticsModel):
-        stmt = stmt.add_columns(ProjectDataUnitMetadata.data_uri, ProjectDataUnitMetadata.data_uri_is_video)
+        stmt = stmt.add_columns(
+            ProjectDataUnitMetadata.data_uri, ProjectDataUnitMetadata.data_uri_is_video
+        )
         stmt = stmt.join(
             ProjectDataUnitMetadata,
             onclause=(base_model.du_hash == ProjectDataUnitMetadata.du_hash)
@@ -89,15 +106,25 @@ class ActiveProject:
         def transform(df):
             _root_path = self._root_path
             if _root_path is None:
-                raise ValueError("Root path is not set. Provide it in the constructor or use `from_db_file`")
+                raise ValueError(
+                    "Root path is not set. Provide it in the constructor or use `from_db_file`"
+                )
 
-            df["data_uri"] = df.data_uri.map(lambda p: url_to_file_path(p, project_dir=_root_path) if p else p)
+            df["data_uri"] = df.data_uri.map(
+                lambda p: url_to_file_path(p, project_dir=_root_path) if p else p
+            )
             return df
 
         return stmt, transform
 
-    def _join_data_tags_statement(self, stmt, base_model: AnalyticsModel, group_by_cols=None):
-        stmt = stmt.add_columns(("[" + func.group_concat('"' + ProjectTag.name + '"', ", ") + "]").label("data_tags"))
+    def _join_data_tags_statement(
+        self, stmt, base_model: AnalyticsModel, group_by_cols=None
+    ):
+        stmt = stmt.add_columns(
+            ("[" + func.group_concat('"' + ProjectTag.name + '"', ", ") + "]").label(
+                "data_tags"
+            )
+        )
         stmt = (
             stmt.outerjoin(
                 ProjectTaggedDataUnit,
@@ -120,7 +147,9 @@ class ActiveProject:
 
         return stmt, transform
 
-    def get_prediction_metrics(self, include_data_uris: bool = False, include_data_tags: bool = False) -> pd.DataFrame:
+    def get_prediction_metrics(
+        self, include_data_uris: bool = False, include_data_tags: bool = False
+    ) -> pd.DataFrame:
         """
         Returns a pandas data frame with all the prediction metrics.
 
@@ -131,7 +160,9 @@ class ActiveProject:
 
         """
         if self._model_hash is None:
-            raise ValueError(f"Project with name `{self._project_name}` does not have any model predictions")
+            raise ValueError(
+                f"Project with name `{self._project_name}` does not have any model predictions"
+            )
 
         with Session(self._engine) as sess:
             P = ProjectPredictionAnalytics
@@ -149,15 +180,22 @@ class ActiveProject:
                 P.metric_blue,
                 P.metric_label_border_closeness,
                 P.metric_label_confidence,
-                (P.feature_hash == P.match_feature_hash).cast(Integer).label("true_positive"),  # type: ignore
-            ).where(P.project_hash == self.project_hash, P.prediction_hash == self._model_hash)
+                (P.feature_hash == P.match_feature_hash)
+                .cast(Integer)
+                .label("true_positive"),  # type: ignore
+            ).where(
+                P.project_hash == self.project_hash,
+                P.prediction_hash == self._model_hash,
+            )
 
             transforms = []
             if include_data_uris:
                 stmt, transform = self._join_path_statement(stmt, P)
                 transforms.append(transform)
             if include_data_tags:
-                stmt, transform = self._join_data_tags_statement(stmt, P, group_by_cols=[P.object_hash])
+                stmt, transform = self._join_data_tags_statement(
+                    stmt, P, group_by_cols=[P.object_hash]
+                )
                 transforms.append(transform)
 
             df = pd.DataFrame(sess.exec(stmt).all())
@@ -168,7 +206,9 @@ class ActiveProject:
 
         return df
 
-    def get_images_metrics(self, *, include_data_uris: bool = False, include_data_tags: bool = True) -> pd.DataFrame:
+    def get_images_metrics(
+        self, *, include_data_uris: bool = False, include_data_tags: bool = True
+    ) -> pd.DataFrame:
         """
         Returns a pandas data frame with all the prediction metrics.
 
@@ -187,7 +227,9 @@ class ActiveProject:
                 stmt, transform = self._join_path_statement(stmt, ProjectDataAnalytics)
                 transforms.append(transform)
             if include_data_tags:
-                stmt, transform = self._join_data_tags_statement(stmt, ProjectDataAnalytics)
+                stmt, transform = self._join_data_tags_statement(
+                    stmt, ProjectDataAnalytics
+                )
                 transforms.append(transform)
             image_metrics = sess.exec(stmt).all()
 

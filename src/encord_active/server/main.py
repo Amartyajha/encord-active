@@ -24,7 +24,12 @@ app = FastAPI()
 app.include_router(project.router, dependencies=[Depends(verify_token)])
 app.include_router(project2.router, dependencies=[Depends(verify_token)])
 
-origins = [get_settings().ALLOWED_ORIGIN, "http://localhost:3000", "http://localhost:5173", "http://localhost:5173/"]
+origins = [
+    get_settings().ALLOWED_ORIGIN,
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5173/",
+]
 
 is_dev = get_settings().ENV == Env.DEVELOPMENT
 
@@ -32,15 +37,26 @@ if is_dev:
     logger = logging.getLogger(__name__)
     logger.info("Make sure you run the frontend separately.")
 else:
-    frontend_build_path = Path(__file__).parent.parent / "frontend" / "dist" / get_settings().ENV.value
+    frontend_build_path = (
+        Path(__file__).parent.parent / "frontend" / "dist" / get_settings().ENV.value
+    )
 
-    if not frontend_build_path.exists() or not (frontend_build_path / "assets").exists():
+    if (
+        not frontend_build_path.exists()
+        or not (frontend_build_path / "assets").exists()
+    ):
         logger = logging.getLogger(__name__)
         logger.error("Cannot find frontend-components:")
         logger.error(f" {frontend_build_path} does not exist...")
-        raise RuntimeError("Bad encord-active install, frontend-components are missing!!")
+        raise RuntimeError(
+            "Bad encord-active install, frontend-components are missing!!"
+        )
 
-    app.mount("/assets", StaticFiles(directory=frontend_build_path / "assets", follow_symlink=False), name="fe-assets")
+    app.mount(
+        "/assets",
+        StaticFiles(directory=frontend_build_path / "assets", follow_symlink=False),
+        name="fe-assets",
+    )
 
     @app.get("/")
     @app.get("/index.html")
@@ -52,7 +68,11 @@ else:
         return FileResponse(frontend_build_path / "favicon.ico")
 
 
-app.mount("/ea-sandbox-static", StaticFiles(directory=IMAGES_PATH, follow_symlink=False), name="sandbox-static")
+app.mount(
+    "/ea-sandbox-static",
+    StaticFiles(directory=IMAGES_PATH, follow_symlink=False),
+    name="sandbox-static",
+)
 
 app.add_middleware(
     CORSMiddleware,

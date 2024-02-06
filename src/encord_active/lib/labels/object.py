@@ -11,5 +11,10 @@ class ObjectShape(str, Enum):
     ROTATABLE_BOUNDING_BOX = "rotatable_bounding_box"
 
 
-SimpleShapes = {ObjectShape.POLYGON, ObjectShape.POLYLINE, ObjectShape.KEY_POINT, ObjectShape.SKELETON}
+SimpleShapes = {
+    ObjectShape.POLYGON,
+    ObjectShape.POLYLINE,
+    ObjectShape.KEY_POINT,
+    ObjectShape.SKELETON,
+}
 BoxShapes = {ObjectShape.BOUNDING_BOX, ObjectShape.ROTATABLE_BOUNDING_BOX}

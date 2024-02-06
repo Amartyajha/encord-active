@@ -38,7 +38,8 @@ logger = logging.getLogger(__name__)
 KITTI_COLUMNS = [
     ("class_name", str),
     ("truncation", float),  # [0, 1]
-    ("occlusion", int),  # [0, 3], [ 0 = fully visible, 1 = partly visible, 2 = largely occluded, 3 = unknown]
+    # [0, 3], [ 0 = fully visible, 1 = partly visible, 2 = largely occluded, 3 = unknown]
+    ("occlusion", int),
     ("alpha", float),  # [-pi, pi]
     # bbox
     ("xmin", float),  # [0, img_width]
@@ -78,14 +79,18 @@ def import_predictions(project: Project, predictions: list[Prediction]):
 
     # Ensure that all predictions are of the same type (either objects or classifications) due to structural limitations
     all_object_type = all(pred.object is not None for pred in predictions)
-    all_classification_type = all(pred.classification is not None for pred in predictions)
+    all_classification_type = all(
+        pred.classification is not None for pred in predictions
+    )
 
     if all_object_type:
         prediction_type = MainPredictionType.OBJECT
     elif all_classification_type:
         prediction_type = MainPredictionType.CLASSIFICATION
     else:
-        raise TypeError("Mismatched prediction types. All predictions must be either objects or classifications")
+        raise TypeError(
+            "Mismatched prediction types. All predictions must be either objects or classifications"
+        )
 
     with PredictionWriter(project) as writer:
         for pred in predictions:
@@ -180,7 +185,9 @@ def import_mask_predictions(
     predictions_dir: Path,
     ontology_mapping: Optional[dict[str, int]] = None,
     file_name_regex: str = PNG_FILE_NAME_REGEX,
-    file_path_to_data_unit_func: Optional[Callable[[Path], tuple[str, Optional[int]]]] = None,
+    file_path_to_data_unit_func: Optional[
+        Callable[[Path], tuple[str, Optional[int]]]
+    ] = None,
 ):
     """
     Import predictions from segmentation masks into the specified Encord Active project.
@@ -258,12 +265,19 @@ def migrate_coco_predictions(
     # Verify the validity of the ontology object hashes, ensuring they exist and represent bounding boxes
     pfs = ProjectFileStructure(project_dir)
     relevant_ontology_objects = {
-        o.feature_node_hash: o for o in OntologyStructure.from_dict(json.loads(pfs.ontology.read_text())).objects
+        o.feature_node_hash: o
+        for o in OntologyStructure.from_dict(
+            json.loads(pfs.ontology.read_text())
+        ).objects
     }
-    bad_hashes = [h for h in ontology_mapping.keys() if h not in relevant_ontology_objects]
+    bad_hashes = [
+        h for h in ontology_mapping.keys() if h not in relevant_ontology_objects
+    ]
     if len(bad_hashes) > 0:
         bad_hashes_str = ", ".join(f"'{_}'" for _ in bad_hashes)
-        relevant_objects_str = ", ".join(f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items())
+        relevant_objects_str = ", ".join(
+            f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items()
+        )
         raise ValueError(
             f"The ontology mapping contains references to invalid ontology object hashes: {bad_hashes_str}.\n"
             "Please, update the mapping with the correct object hashes from the project's ontology.\n"
@@ -299,11 +313,17 @@ def migrate_coco_predictions(
             h = orig_h / du.height
             data = BoundingBox(x=x, y=y, w=w, h=h)
         else:
-            raise Exception(f'Unsupported format found in the prediction "{res}". Expected a bounding box or polygon.')
+            raise Exception(
+                f'Unsupported format found in the prediction "{res}". Expected a bounding box or polygon.'
+            )
 
-        ontology_obj_hash = class_id_and_shape_to_ontology_hash.get((res.category_id, shape))
+        ontology_obj_hash = class_id_and_shape_to_ontology_hash.get(
+            (res.category_id, shape)
+        )
         if ontology_obj_hash is None:
-            logger.info(f'No ontology object found for category id "{res.category_id}" and shape "{shape}". Skipping.')
+            logger.info(
+                f'No ontology object found for category id "{res.category_id}" and shape "{shape}". Skipping.'
+            )
             continue
 
         predictions.append(
@@ -326,7 +346,9 @@ def migrate_kitti_predictions(
     predictions_dir: Path,
     ontology_mapping: Optional[dict[str, str]] = None,
     file_name_regex: str = KITTI_FILE_NAME_REGEX,
-    file_path_to_data_unit_func: Optional[Callable[[Path], tuple[str, Optional[int]]]] = None,
+    file_path_to_data_unit_func: Optional[
+        Callable[[Path], tuple[str, Optional[int]]]
+    ] = None,
 ) -> list[Prediction]:
     """
     Migrate predictions from the KITTI label format to Encord's Prediction class format.
@@ -357,7 +379,9 @@ def migrate_kitti_predictions(
     file_paths = [
         path
         for path in predictions_dir.glob("**/*")
-        if path.is_file() and path.suffix.lower() in [".txt", ".csv"] and pattern.match(path.name) is not None
+        if path.is_file()
+        and path.suffix.lower() in [".txt", ".csv"]
+        and pattern.match(path.name) is not None
     ]
 
     # Retrieve the mapping from ontology object hashes to label names
@@ -370,13 +394,19 @@ def migrate_kitti_predictions(
     pfs = ProjectFileStructure(project_dir)
     relevant_ontology_objects = {
         o.feature_node_hash: o
-        for o in OntologyStructure.from_dict(json.loads(pfs.ontology.read_text())).objects
+        for o in OntologyStructure.from_dict(
+            json.loads(pfs.ontology.read_text())
+        ).objects
         if o.shape.value in BoxShapes
     }
-    bad_hashes = [h for h in ontology_mapping.keys() if h not in relevant_ontology_objects]
+    bad_hashes = [
+        h for h in ontology_mapping.keys() if h not in relevant_ontology_objects
+    ]
     if len(bad_hashes) > 0:
         bad_hashes_str = ", ".join(f"'{_}'" for _ in bad_hashes)
-        relevant_objects_str = ", ".join(f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items())
+        relevant_objects_str = ", ".join(
+            f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items()
+        )
         raise ValueError(
             f"The ontology mapping contains references to invalid ontology object hashes: {bad_hashes_str}.\n"
             "Please, update the mapping with the correct object hashes from the project's ontology.\n"
@@ -387,7 +417,9 @@ def migrate_kitti_predictions(
     predictions = []
     for file_path in tqdm(file_paths, desc="Migrating KITTI predictions"):
         # Identify the data unit that corresponds to the given file
-        du = _get_matching_data_unit(pfs, file_path, file_path_to_data_unit_func, file_name_regex)
+        du = _get_matching_data_unit(
+            pfs, file_path, file_path_to_data_unit_func, file_name_regex
+        )
         if du is None:
             continue
 
@@ -417,7 +449,11 @@ def migrate_kitti_predictions(
                 Prediction(
                     data_hash=du.data_hash,
                     confidence=float(row["undefined_0"]),
-                    object=ObjectDetection(format=Format.BOUNDING_BOX, data=bbox, feature_hash=ontology_obj_hash),
+                    object=ObjectDetection(
+                        format=Format.BOUNDING_BOX,
+                        data=bbox,
+                        feature_hash=ontology_obj_hash,
+                    ),
                 )
             )
     return predictions
@@ -428,7 +464,9 @@ def migrate_mask_predictions(
     predictions_dir: Path,
     ontology_mapping: Optional[dict[str, int]] = None,
     file_name_regex: str = PNG_FILE_NAME_REGEX,
-    file_path_to_data_unit_func: Optional[Callable[[Path], tuple[str, Optional[int]]]] = None,
+    file_path_to_data_unit_func: Optional[
+        Callable[[Path], tuple[str, Optional[int]]]
+    ] = None,
 ) -> list[Prediction]:
     """
     Migrate predictions from segmentation masks into the specified Encord Active project.
@@ -459,7 +497,9 @@ def migrate_mask_predictions(
     file_paths = [
         path
         for path in predictions_dir.glob("**/*")
-        if path.is_file() and path.suffix.lower() in [".json"] and pattern.match(path.name) is not None
+        if path.is_file()
+        and path.suffix.lower() in [".json"]
+        and pattern.match(path.name) is not None
     ]
 
     # Retrieve the mapping from ontology object hashes to object class ids
@@ -472,13 +512,19 @@ def migrate_mask_predictions(
     pfs = ProjectFileStructure(project_dir)
     relevant_ontology_objects = {
         o.feature_node_hash: o
-        for o in OntologyStructure.from_dict(json.loads(pfs.ontology.read_text())).objects
+        for o in OntologyStructure.from_dict(
+            json.loads(pfs.ontology.read_text())
+        ).objects
         if o.shape.value == ObjectShape.POLYGON
     }
-    bad_hashes = [h for h in ontology_mapping.keys() if h not in relevant_ontology_objects]
+    bad_hashes = [
+        h for h in ontology_mapping.keys() if h not in relevant_ontology_objects
+    ]
     if len(bad_hashes) > 0:
         bad_hashes_str = ", ".join(f"'{_}'" for _ in bad_hashes)
-        relevant_objects_str = ", ".join(f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items())
+        relevant_objects_str = ", ".join(
+            f"{hash_}: '{obj.name}'" for hash_, obj in relevant_ontology_objects.items()
+        )
         raise ValueError(
             f"The ontology mapping contains references to invalid ontology object hashes: {bad_hashes_str}.\n"
             "Please, update the mapping with the correct object hashes from the project's ontology.\n"
@@ -489,7 +535,9 @@ def migrate_mask_predictions(
     predictions = []
     for file_path in tqdm(file_paths, desc="Migrating mask predictions", leave=False):
         # Identify the data unit that corresponds to the given file
-        du = _get_matching_data_unit(pfs, file_path, file_path_to_data_unit_func, file_name_regex)
+        du = _get_matching_data_unit(
+            pfs, file_path, file_path_to_data_unit_func, file_name_regex
+        )
         if du is None:
             continue
 
@@ -510,7 +558,9 @@ def migrate_mask_predictions(
             ontology_obj_hash = class_id_to_ontology_hash[cls]
             mask = np.zeros_like(input_mask)
             mask[input_mask == cls] = 1
-            contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+            contours = cv2.findContours(
+                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )[0]
 
             for contour in contours:
                 if len(contour) < 3 or cv2.contourArea(contour) < 4:
@@ -522,7 +572,11 @@ def migrate_mask_predictions(
                     Prediction(
                         data_hash=du.data_hash,
                         confidence=1.0,
-                        object=ObjectDetection(format=Format.POLYGON, data=_mask, feature_hash=ontology_obj_hash),
+                        object=ObjectDetection(
+                            format=Format.POLYGON,
+                            data=_mask,
+                            feature_hash=ontology_obj_hash,
+                        ),
                     )
                 )
     return predictions
@@ -531,7 +585,9 @@ def migrate_mask_predictions(
 # ================================= UTILITY FUNCTIONS =================================
 
 
-def _get_data_unit_identifier(file_path: Path, file_name_regex: str) -> tuple[Optional[str], Optional[int]]:
+def _get_data_unit_identifier(
+    file_path: Path, file_name_regex: str
+) -> tuple[Optional[str], Optional[int]]:
     match = re.match(file_name_regex, file_path.name)
     if match is None:
         return None, None
@@ -576,14 +632,24 @@ def _get_matching_data_unit(
     if len(data_units) == 1:
         return data_units[0]
     if len(data_units) == 0:
-        logger.info(f'No data unit found for file "{file_path}". Expected exactly one match. Skipping.')
+        logger.info(
+            f'No data unit found for file "{file_path}". Expected exactly one match. Skipping.'
+        )
     else:
-        logger.info(f'Multiple data units found for file "{file_path}". Expected exactly one match. Skipping.')
+        logger.info(
+            f'Multiple data units found for file "{file_path}". Expected exactly one match. Skipping.'
+        )
     return None
 
 
 def _json_load(mapping_file: Path):
-    if not mapping_file.exists() or not mapping_file.is_file() or mapping_file.suffix != ".json":
-        raise FileNotFoundError(f'JSON file with expected path "{mapping_file}" was not found')
+    if (
+        not mapping_file.exists()
+        or not mapping_file.is_file()
+        or mapping_file.suffix != ".json"
+    ):
+        raise FileNotFoundError(
+            f'JSON file with expected path "{mapping_file}" was not found'
+        )
     mapping = json.loads(mapping_file.read_text(encoding="utf-8"))
     return mapping

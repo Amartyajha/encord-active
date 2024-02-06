@@ -1,12 +1,12 @@
+import logging
 import sys
 from pathlib import Path
-
-sys.path.append(Path(__file__).parent.as_posix())
-import logging
 
 import torch
 import torchvision
 from provider import convert_coco_poly_to_mask
+
+sys.path.append(Path(__file__).parent.as_posix())
 
 
 class EncordMaskRCNNDataset(torchvision.datasets.CocoDetection):
@@ -49,7 +49,14 @@ class EncordMaskRCNNDataset(torchvision.datasets.CocoDetection):
         segmentations = [obj["segmentation"] for obj in target]
         masks = convert_coco_poly_to_mask(segmentations, img_height, img_width)
 
-        processed_target = {"boxes": torch.as_tensor(boxes, dtype=torch.float32), "labels": torch.as_tensor(labels, dtype=torch.int64), "masks": masks, "image_id": torch.tensor([image_id]), "area": torch.tensor(area), "iscrowd": torch.as_tensor(iscrowd, dtype=torch.int64)}
+        processed_target = {
+            "boxes": torch.as_tensor(boxes, dtype=torch.float32),
+            "labels": torch.as_tensor(labels, dtype=torch.int64),
+            "masks": masks,
+            "image_id": torch.tensor([image_id]),
+            "area": torch.tensor(area),
+            "iscrowd": torch.as_tensor(iscrowd, dtype=torch.int64),
+        }
 
         if self._transforms is not None:
             img, processed_target = self._transforms(img, processed_target)

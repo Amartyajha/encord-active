@@ -13,7 +13,9 @@ from encord_active.lib.model_predictions.writer import MainPredictionType
 
 
 def create_metric_importance_charts(
-    model_predictions: Union[DataFrame[PredictionMatchSchema], DataFrame[ClassificationPredictionMatchSchema]],
+    model_predictions: Union[
+        DataFrame[PredictionMatchSchema], DataFrame[ClassificationPredictionMatchSchema]
+    ],
     metric_columns: List[str],
     num_samples: int,
     prediction_type: MainPredictionType,
@@ -46,10 +48,17 @@ def create_metric_importance_charts(
     correlations["index"] = correlations.index.T
 
     mi = pd.DataFrame.from_dict(
-        {"index": metrics.columns, "importance": mutual_info_regression(metrics.fillna(0), scores, random_state=42)}
+        {
+            "index": metrics.columns,
+            "importance": mutual_info_regression(
+                metrics.fillna(0), scores, random_state=42
+            ),
+        }
     )
     # pylint: disable=unsubscriptable-object
-    sorted_metrics: List[str] = mi.sort_values("importance", ascending=False, inplace=False)["index"].to_list()
+    sorted_metrics: List[str] = mi.sort_values(
+        "importance", ascending=False, inplace=False
+    )["index"].to_list()
 
     mutual_info_bars = (
         alt.Chart(mi, title="Metric Importance")
@@ -69,9 +78,13 @@ def create_metric_importance_charts(
         alt.Chart(correlations, title="Metric Correlations")
         .mark_bar()
         .encode(
-            alt.X("correlation", title="Correlation", scale=alt.Scale(domain=[-1.0, 1.0])),
+            alt.X(
+                "correlation", title="Correlation", scale=alt.Scale(domain=[-1.0, 1.0])
+            ),
             alt.Y("index", title="Metric", sort=sorted_metrics),
-            alt.Color("correlation", scale=alt.Scale(scheme="redyellowgreen", align=0.0)),
+            alt.Color(
+                "correlation", scale=alt.Scale(scheme="redyellowgreen", align=0.0)
+            ),
             tooltip=[
                 alt.Tooltip("index", title="Metric"),
                 alt.Tooltip("correlation", title="Correlation", format=",.3f"),
@@ -79,4 +92,6 @@ def create_metric_importance_charts(
         )
     )
 
-    return alt.hconcat(mutual_info_bars, correlation_bars).resolve_scale(color="independent")
+    return alt.hconcat(mutual_info_bars, correlation_bars).resolve_scale(
+        color="independent"
+    )

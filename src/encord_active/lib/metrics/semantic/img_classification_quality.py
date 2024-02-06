@@ -103,10 +103,16 @@ class ImageLevelQualityTest(Metric):
         question_hashes = {c["featureHash"] for c in self.label_embeddings}
 
         for question_hash in question_hashes:
-            selected_collections = list(filter(lambda c: c["featureHash"] == question_hash, self.label_embeddings))
+            selected_collections = list(
+                filter(
+                    lambda c: c["featureHash"] == question_hash, self.label_embeddings
+                )
+            )
 
             if len(selected_collections) > self.num_nearest_neighbors:
-                question_embeddings = np.stack(list(map(lambda x: x["embedding"], selected_collections)))
+                question_embeddings = np.stack(
+                    list(map(lambda x: x["embedding"], selected_collections))
+                )
 
                 index = EmbeddingIndex(question_embeddings)
                 index.prepare()
@@ -117,18 +123,24 @@ class ImageLevelQualityTest(Metric):
         return question_specific_embeddings, question_specific_indexes
 
     def get_nearest_indexes(self):
-        question_specific_embeddings, question_specific_index = self.convert_to_indexes()
+        (
+            question_specific_embeddings,
+            question_specific_index,
+        ) = self.convert_to_indexes()
 
         nearest_metrics = {}
         for question_hash, question_index in question_specific_index.items():
             query_result = question_index.query(  # pylint: disable=no-value-for-parameter
-                question_specific_embeddings[question_hash], k=self.num_nearest_neighbors
+                question_specific_embeddings[question_hash],
+                k=self.num_nearest_neighbors,
             )
             nearest_metrics[question_hash] = query_result.indices
 
         return nearest_metrics
 
-    def transform_neighbors_to_labels_for_all_questions(self, nearest_indexes: dict[str, np.ndarray]):
+    def transform_neighbors_to_labels_for_all_questions(
+        self, nearest_indexes: dict[str, np.ndarray]
+    ):
         nearest_labels_all_questions = {}
 
         for question in nearest_indexes:
@@ -139,14 +151,20 @@ class ImageLevelQualityTest(Metric):
                 if not answers:
                     gt_label = "Unclassified"
                 else:
-                    gt_label = self.featureNodeHash_to_index[question][answers["answer_featureHash"]]
+                    gt_label = self.featureNodeHash_to_index[question][
+                        answers["answer_featureHash"]
+                    ]
 
                 noisy_labels_list.append(gt_label)
 
             noisy_labels = np.array(noisy_labels_list).astype(np.int32)
             nearest_labels = np.take(noisy_labels, nearest_indexes[question])
-            noisy_labels_tmp, nearest_labels_except_self = np.split(nearest_labels, [1], axis=-1)
-            assert np.all(noisy_labels == noisy_labels_tmp.squeeze()), "Failed class index extraction"
+            noisy_labels_tmp, nearest_labels_except_self = np.split(
+                nearest_labels, [1], axis=-1
+            )
+            assert np.all(
+                noisy_labels == noisy_labels_tmp.squeeze()
+            ), "Failed class index extraction"
 
             nearest_labels_all_questions[question] = {
                 "gt_label": noisy_labels,
@@ -155,14 +173,19 @@ class ImageLevelQualityTest(Metric):
 
         return nearest_labels_all_questions
 
-    def convert_nearest_labels_to_scores(self, nearest_labels: dict[str, np.ndarray]) -> List[float]:
+    def convert_nearest_labels_to_scores(
+        self, nearest_labels: dict[str, np.ndarray]
+    ) -> List[float]:
         """
         Higher scores mean more reliable label
         :param nearest_labels: output of the index.search()
         :return: score for each row
         """
 
-        label_matches = np.equal(nearest_labels["neighbor_labels"], np.expand_dims(nearest_labels["gt_label"], axis=-1))
+        label_matches = np.equal(
+            nearest_labels["neighbor_labels"],
+            np.expand_dims(nearest_labels["gt_label"], axis=-1),
+        )
         collections_scores = label_matches.mean(axis=-1)
 
         return collections_scores
@@ -172,14 +195,20 @@ class ImageLevelQualityTest(Metric):
     ) -> Dict[str, List[float]]:
         collections_scores_all_questions: Dict[str, List[float]] = {}
         for question in nearest_labels_all_questions:
-            scores = self.convert_nearest_labels_to_scores(nearest_labels_all_questions[question])
+            scores = self.convert_nearest_labels_to_scores(
+                nearest_labels_all_questions[question]
+            )
             collections_scores_all_questions[question] = scores
         return collections_scores_all_questions
 
     def create_key_score_pairs(self, nearest_indexes: dict[str, np.ndarray]):
-        nearest_labels_all_questions = self.transform_neighbors_to_labels_for_all_questions(nearest_indexes)
-        collections_scores_all_questions = self.convert_nearest_labels_to_scores_for_all_questions(
-            nearest_labels_all_questions
+        nearest_labels_all_questions = (
+            self.transform_neighbors_to_labels_for_all_questions(nearest_indexes)
+        )
+        collections_scores_all_questions = (
+            self.convert_nearest_labels_to_scores_for_all_questions(
+                nearest_labels_all_questions
+            )
         )
 
         key_score_pairs: Dict[str, Dict[str, ClassificationInfo]] = {}
@@ -225,7 +254,10 @@ class ImageLevelQualityTest(Metric):
             for i in range(question_nearest_metrics.shape[0]):
                 if i != question_nearest_metrics[i, 0]:
                     item_index = np.where(question_nearest_metrics[i] == i)[0][0]
-                    question_nearest_metrics[i, 0], question_nearest_metrics[i, item_index] = (
+                    (
+                        question_nearest_metrics[i, 0],
+                        question_nearest_metrics[i, item_index],
+                    ) = (
                         question_nearest_metrics[i, item_index],
                         question_nearest_metrics[i, 0],
                     )
@@ -246,20 +278,30 @@ class ImageLevelQualityTest(Metric):
                 found_any = True
                 self.featureNodeHash_to_index[class_label.feature_node_hash] = {}
                 self.featureNodeHash_to_name[class_label.feature_node_hash] = {}
-                self.featureNodeHash_to_question_name[class_label.feature_node_hash] = class_label.attributes[0].name
+                self.featureNodeHash_to_question_name[
+                    class_label.feature_node_hash
+                ] = class_label.attributes[0].name
                 self.index_to_answer_name[class_label.feature_node_hash] = {}
 
                 for counter, option in enumerate(class_question.options):
-                    self.featureNodeHash_to_index[class_label.feature_node_hash][option.feature_node_hash] = counter
-                    self.featureNodeHash_to_name[class_label.feature_node_hash][option.feature_node_hash] = option.label
-                    self.index_to_answer_name[class_label.feature_node_hash][counter] = option.label
+                    self.featureNodeHash_to_index[class_label.feature_node_hash][
+                        option.feature_node_hash
+                    ] = counter
+                    self.featureNodeHash_to_name[class_label.feature_node_hash][
+                        option.feature_node_hash
+                    ] = option.label
+                    self.index_to_answer_name[class_label.feature_node_hash][
+                        counter
+                    ] = option.label
 
         return found_any
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
         project_has_classifications = self.setup(iterator)
         if not project_has_classifications:
-            logger.info("<yellow>[Skipping]</yellow> No frame level classifications in the project ontology.")
+            logger.info(
+                "<yellow>[Skipping]</yellow> No frame level classifications in the project ontology."
+            )
 
         project_file_structure = ProjectFileStructure(iterator.cache_dir)
         if self.metadata.embedding_type:
@@ -286,7 +328,10 @@ class ImageLevelQualityTest(Metric):
             if key in key_score_pairs:
                 for classification in data_unit["labels"].get("classifications", []):
                     question_featureHash = classification["featureHash"]
-                    if question_featureHash not in self.featureNodeHash_to_question_name:
+                    if (
+                        question_featureHash
+                        not in self.featureNodeHash_to_question_name
+                    ):
                         continue
 
                     if question_featureHash in key_score_pairs[key]:
@@ -294,7 +339,9 @@ class ImageLevelQualityTest(Metric):
 
                         label_class = f"{classification_info['answer']}"
                         if is_multiclass:
-                            label_class = f"{classification_info['question']}:{label_class}"
+                            label_class = (
+                                f"{classification_info['question']}:{label_class}"
+                            )
 
                         if question_featureHash in key_score_pairs[key]:
                             writer.write(

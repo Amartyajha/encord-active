@@ -41,7 +41,6 @@ router = APIRouter(
     prefix="/{project_hash}/predictions/{prediction_hash}",
 )
 
-
 # FIXME: verify project_hash <=> prediction hash is allowed to access
 
 # FIXME: for group by filter_hash queries, what is the correct behaviour r.e case where no value exists for that feature
@@ -77,7 +76,10 @@ def get_project_prediction_summary(
         is_classification = False
         if range_annotation_types is not None:
             annotate_ty_min, annotate_ty_max = range_annotation_types
-            is_classification = annotate_ty_max == annotate_ty_min and annotate_ty_min == AnnotationType.CLASSIFICATION
+            is_classification = (
+                annotate_ty_max == annotate_ty_min
+                and annotate_ty_min == AnnotationType.CLASSIFICATION
+            )
 
         # FIXME: this is only used by classification only predictions.
         # FIXME: this should be separated and considered in the future.
@@ -88,7 +90,10 @@ def get_project_prediction_summary(
                         ProjectPredictionAnalyticsFalseNegatives.du_hash,
                         ProjectPredictionAnalyticsFalseNegatives.frame,
                     )
-                    .where(ProjectPredictionAnalyticsFalseNegatives.prediction_hash == prediction_hash)
+                    .where(
+                        ProjectPredictionAnalyticsFalseNegatives.prediction_hash
+                        == prediction_hash
+                    )
                     .group_by(
                         ProjectPredictionAnalyticsFalseNegatives.du_hash,
                         ProjectPredictionAnalyticsFalseNegatives.frame,
@@ -105,7 +110,8 @@ def get_project_prediction_summary(
                 sql_count(),
             )
             .where(
-                ProjectPredictionAnalyticsFalseNegatives.prediction_hash == prediction_hash,
+                ProjectPredictionAnalyticsFalseNegatives.prediction_hash
+                == prediction_hash,
                 ProjectPredictionAnalyticsFalseNegatives.iou_threshold < iou,
             )
             .group_by(
@@ -117,7 +123,8 @@ def get_project_prediction_summary(
                 ProjectPredictionAnalyticsFalseNegatives.feature_hash,
             )
             .where(
-                ProjectPredictionAnalyticsFalseNegatives.prediction_hash == prediction_hash,
+                ProjectPredictionAnalyticsFalseNegatives.prediction_hash
+                == prediction_hash,
             )
             .group_by(
                 ProjectPredictionAnalyticsFalseNegatives.feature_hash,
@@ -131,7 +138,8 @@ def get_project_prediction_summary(
                 ProjectPredictionAnalytics.feature_hash,
                 sql_sum(
                     (
-                        (ProjectPredictionAnalytics.match_duplicate_iou < iou) & (ProjectPredictionAnalytics.iou >= iou)
+                        (ProjectPredictionAnalytics.match_duplicate_iou < iou)
+                        & (ProjectPredictionAnalytics.iou >= iou)
                     ).cast(  # type: ignore
                         Integer
                     )  # type: ignore
@@ -173,9 +181,11 @@ def get_project_prediction_summary(
                 tp_iou: int = (
                     sess.exec(
                         select(sql_count()).where(
-                            ProjectPredictionAnalytics.prediction_hash == prediction_hash,
+                            ProjectPredictionAnalytics.prediction_hash
+                            == prediction_hash,
                             ProjectPredictionAnalytics.feature_hash == feature_hash,
-                            ProjectPredictionAnalytics.match_duplicate_iou < iou_threshold,
+                            ProjectPredictionAnalytics.match_duplicate_iou
+                            < iou_threshold,
                             ProjectPredictionAnalytics.iou >= iou_threshold,
                         )
                     ).first()
@@ -237,7 +247,9 @@ def get_project_prediction_summary(
             "iou": iou,
         },
     ).first()
-    metric_stat_names = [f"{ty}_{name}" for name in ["score"] + metric_names for ty in ["e", "var"]]
+    metric_stat_names = [
+        f"{ty}_{name}" for name in ["score"] + metric_names for ty in ["e", "var"]
+    ]
     valid_metric_stats = {}
     valid_metric_stat_name_set = set(metric_names)
     for stat_name, stat_value in zip(metric_stat_names, metric_stats or []):
@@ -247,7 +259,9 @@ def get_project_prediction_summary(
                 valid_metric_stat_name_set.remove(stat)
         else:
             if stat_name.startswith("var_"):
-                valid_metric_stats[stat_name.replace("var_", "std_")] = math.sqrt(stat_value)
+                valid_metric_stats[stat_name.replace("var_", "std_")] = math.sqrt(
+                    stat_value
+                )
             else:
                 valid_metric_stats[stat_name] = stat_value
     valid_metric_stat_names = list(valid_metric_stat_name_set)
@@ -274,12 +288,17 @@ def get_project_prediction_summary(
                 """
             ),
             params={
-                "prediction_hash": guid.process_bind_param(prediction_hash, engine.dialect),
+                "prediction_hash": guid.process_bind_param(
+                    prediction_hash, engine.dialect
+                ),
                 "iou": iou,
                 **valid_metric_stats,
             },
         ).first()
-        correlations = {name: value for name, value in zip(valid_metric_stat_names, correlation_result)}  # type: ignore
+        correlations = {
+            name: value
+            for name, value in zip(valid_metric_stat_names, correlation_result)
+        }  # type: ignore
     else:
         correlations = {}
 
@@ -318,11 +337,17 @@ def get_project_prediction_summary(
             GROUP BY round(r, 2)
             ORDER BY round(r, 2) DESC
             """
-        ).bindparams(bindparam("prediction_hash", GUID), bindparam("iou", Float), bindparam("r_divisor", Float))
+        ).bindparams(
+            bindparam("prediction_hash", GUID),
+            bindparam("iou", Float),
+            bindparam("r_divisor", Float),
+        )
         pr_result_raw = sess.execute(
             sql,
             params={
-                "prediction_hash": guid.process_bind_param(prediction_hash, engine.dialect),
+                "prediction_hash": guid.process_bind_param(
+                    prediction_hash, engine.dialect
+                ),
                 "iou": iou,
                 "feature_hash": feature_hash,
                 "r_divisor": true_positive_count_map.get(feature_hash, 0)
@@ -332,7 +357,12 @@ def get_project_prediction_summary(
         pr_result = [{"p": p, "r": r} for p, r in pr_result_raw]
         ap_vals = []
         for recall_threshold in range(0, 11, 1):
-            ap_vals.append(max([v["p"] for v in pr_result if v["r"] >= (recall_threshold / 10.0)], default=0.0))
+            ap_vals.append(
+                max(
+                    [v["p"] for v in pr_result if v["r"] >= (recall_threshold / 10.0)],
+                    default=0.0,
+                )
+            )
         prs[feature_hash] = pr_result
         feature_properties[feature_hash]["ap"] = sum(ap_vals) / max(len(ap_vals), 1)
 
@@ -340,7 +370,10 @@ def get_project_prediction_summary(
     for metric_name in AnnotationMetrics.keys():
         importance_data_query = select(
             ProjectPredictionAnalytics.iou
-            * ((ProjectPredictionAnalytics.iou >= iou) & (ProjectPredictionAnalytics.match_duplicate_iou < iou)),
+            * (
+                (ProjectPredictionAnalytics.iou >= iou)
+                & (ProjectPredictionAnalytics.match_duplicate_iou < iou)
+            ),
             getattr(ProjectPredictionAnalytics, metric_name),
         ).where(
             ProjectPredictionAnalytics.prediction_hash == prediction_hash,
@@ -364,13 +397,20 @@ def get_project_prediction_summary(
     return {
         "classification_only": is_classification,
         "classification_tTN": classification_t_tn if is_classification else None,
-        "classification_accuracy": classification_accuracy if is_classification else None,
+        "classification_accuracy": classification_accuracy
+        if is_classification
+        else None,
         "num_frames": num_frames,
-        "mAP": sum(p["ap"] for p in feature_properties.values()) / max(len(feature_properties), 1),
-        "mAR": sum(p["ar"] for p in feature_properties.values()) / max(len(feature_properties), 1),
-        "mP": sum(p["p"] for p in feature_properties.values()) / max(len(feature_properties), 1),
-        "mR": sum(p["r"] for p in feature_properties.values()) / max(len(feature_properties), 1),
-        "mF1": sum(p["f1"] for p in feature_properties.values()) / max(len(feature_properties), 1),
+        "mAP": sum(p["ap"] for p in feature_properties.values())
+        / max(len(feature_properties), 1),
+        "mAR": sum(p["ar"] for p in feature_properties.values())
+        / max(len(feature_properties), 1),
+        "mP": sum(p["p"] for p in feature_properties.values())
+        / max(len(feature_properties), 1),
+        "mR": sum(p["r"] for p in feature_properties.values())
+        / max(len(feature_properties), 1),
+        "mF1": sum(p["f1"] for p in feature_properties.values())
+        / max(len(feature_properties), 1),
         "tTP": t_tp,
         "tFP": t_fp,
         "tFN": t_fn,
@@ -461,7 +501,8 @@ def prediction_metric_performance(
             attr_name=metric_name,
             metrics=AnnotationMetrics,
             enums={},
-            buckets=buckets,  # FIXME: bucket behaviour needs improvement (sql round is better than current impl).
+            # FIXME: bucket behaviour needs improvement (sql round is better than current impl).
+            buckets=buckets,
         )
         metric_buckets = sess.exec(
             select(
@@ -469,7 +510,8 @@ def prediction_metric_performance(
                 metric_attr.group_attr,
                 sql_sum(
                     (
-                        (ProjectPredictionAnalytics.match_duplicate_iou < iou) & (ProjectPredictionAnalytics.iou >= iou)
+                        (ProjectPredictionAnalytics.match_duplicate_iou < iou)
+                        & (ProjectPredictionAnalytics.iou >= iou)
                     ).cast(  # type: ignore
                         Integer
                     )  # type: ignore
@@ -489,7 +531,9 @@ def prediction_metric_performance(
         tp_count: Dict[Tuple[str, float], int] = {}
         for feature, bucket_m, bucket_tp, bucket_tp_fp in metric_buckets:
             bucket_avg = float(bucket_tp) / float(bucket_tp_fp)
-            precision.setdefault(feature, []).append({"m": bucket_m, "a": bucket_avg, "n": bucket_tp_fp})
+            precision.setdefault(feature, []).append(
+                {"m": bucket_m, "a": bucket_avg, "n": bucket_tp_fp}
+            )
             tp_count[(feature, bucket_m)] = bucket_tp_fp
 
         metric_attr = metric_query.get_metric_or_enum(
@@ -523,7 +567,11 @@ def prediction_metric_performance(
             fp_tp_num = tp_count.get((feature, bucket_m), 0)
             label_num = fn_num + fp_tp_num
             fns.setdefault(feature, []).append(
-                {"m": bucket_m, "a": 0 if label_num == 0 else fn_num / label_num, "n": label_num}
+                {
+                    "m": bucket_m,
+                    "a": 0 if label_num == 0 else fn_num / label_num,
+                    "n": label_num,
+                }
             )
     return {
         "precision": precision,

@@ -30,7 +30,9 @@ class ImageBorderCloseness(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, _ in iterator.iterate(desc="Computing closeness to border"):
@@ -39,7 +41,8 @@ class ImageBorderCloseness(Metric):
                     continue
 
                 coordinates = get_object_coordinates(obj)
-                if not coordinates:  # avoid corrupted objects without vertices ([]) and unknown objects' shape (None)
+                # avoid corrupted objects without vertices ([]) and unknown objects' shape (None)
+                if not coordinates:
                     continue
 
                 np_coordinates: np.ndarray = np.array(coordinates, dtype=np.single)

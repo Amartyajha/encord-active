@@ -56,7 +56,9 @@ the lower its score will be.""",
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         moment_store = MomentStore()
@@ -69,10 +71,18 @@ the lower its score will be.""",
                     continue
 
                 key = writer.get_identifier(obj)
-                if key not in hu_moments_identifiers:  # check if identifier was discarded by get_hu_embeddings
+                if (
+                    key not in hu_moments_identifiers
+                ):  # check if identifier was discarded by get_hu_embeddings
                     continue
 
-                moments = np.array(eval(hu_moments_df.loc[hu_moments_df["identifier"] == key, "embedding"].values[0]))
+                moments = np.array(
+                    eval(
+                        hu_moments_df.loc[
+                            hu_moments_df["identifier"] == key, "embedding"
+                        ].values[0]
+                    )
+                )
                 score = moment_store.score(obj["objectHash"], moments)
                 writer.write(score, obj)
                 found_any = True

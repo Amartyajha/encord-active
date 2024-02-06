@@ -123,12 +123,17 @@ class PredictionEntryWithIndex(NamedTuple):
 ImgClsPredictions = List[PredictionEntryWithIndex]
 ImgClsLabels = List[LabelEntryWithIndex]
 GroundTruthStructure = Dict[Tuple[ImageIdentifier, ClassID], ImgClsLabels]
-GroundTruthsMatchedStructure = Dict[ClassID, Dict[ImageIdentifier, List[LabelMatchList]]]
+GroundTruthsMatchedStructure = Dict[
+    ClassID, Dict[ImageIdentifier, List[LabelMatchList]]
+]
 
 
 def polyobj_to_nparray(o: dict, width: int, height: int) -> np.ndarray:
     return np.array(
-        [(o["polygon"][str(i)]["x"] * width, o["polygon"][str(i)]["y"] * height) for i in range(len(o["polygon"]))]
+        [
+            (o["polygon"][str(i)]["x"] * width, o["polygon"][str(i)]["y"] * height)
+            for i in range(len(o["polygon"]))
+        ]
     )
 
 
@@ -173,7 +178,9 @@ def precompute_MAP_features(
 
     ground_truths: GroundTruthStructure = {}
     for lidx, true_box in enumerate(true_boxes):
-        ground_truths.setdefault((true_box.img_id, true_box.class_id), []).append(LabelEntryWithIndex(lidx, true_box))
+        ground_truths.setdefault((true_box.img_id, true_box.class_id), []).append(
+            LabelEntryWithIndex(lidx, true_box)
+        )
 
     ground_truths_matched: GroundTruthsMatchedStructure = {}
     for (img_id, class_idx), img_cls_labels in ground_truths.items():
@@ -241,11 +248,16 @@ def iterate_classification_attribute_options(ontology: OntologyStructure):
         for attribute in classification.attributes:
             if isinstance(attribute, RadioAttribute):
                 for option in attribute.options:
-                    yield FrameClassification(
-                        feature_hash=classification.feature_node_hash,
-                        attribute_hash=attribute.feature_node_hash,
-                        option_hash=option.feature_node_hash,
-                    ), ClassificationAttributeOption(classification, attribute, option)
+                    yield (
+                        FrameClassification(
+                            feature_hash=classification.feature_node_hash,
+                            attribute_hash=attribute.feature_node_hash,
+                            option_hash=option.feature_node_hash,
+                        ),
+                        ClassificationAttributeOption(
+                            classification, attribute, option
+                        ),
+                    )
 
 
 class PredictionWriter:
@@ -258,19 +270,30 @@ class PredictionWriter:
         self.project = project.load()
         self.storage_dir = project.file_structure.predictions
 
-        self.predictions: List[Union[PredictionEntry, ClassificationPredictionEntry]] = []
-        self.object_lookup = {o.feature_node_hash: o for o in self.project.ontology.objects}
+        self.predictions: List[
+            Union[PredictionEntry, ClassificationPredictionEntry]
+        ] = []
+        self.object_lookup = {
+            o.feature_node_hash: o for o in self.project.ontology.objects
+        }
 
         self.classification_lookup = {
-            hashes: option for hashes, (_, _, option) in iterate_classification_attribute_options(self.project.ontology)
+            hashes: option
+            for hashes, (_, _, option) in iterate_classification_attribute_options(
+                self.project.ontology
+            )
         }
 
         self.label_row_meta = self.project.label_row_metas
         self.uuids: Set[str] = set()
 
-        self.lr_lookup: Dict[str, str] = {m.data_hash: m.label_hash for m in self.project.label_row_metas.values()}
+        self.lr_lookup: Dict[str, str] = {
+            m.data_hash: m.label_hash for m in self.project.label_row_metas.values()
+        }
         for lr in self.project.label_rows.values():
-            self.lr_lookup.update({du_hash: lr["label_hash"] for du_hash in lr["data_units"]})
+            self.lr_lookup.update(
+                {du_hash: lr["label_hash"] for du_hash in lr["data_units"]}
+            )
 
         self.__prepare_class_id_lookups(custom_object_map)
         self.__prepare_label_list()
@@ -289,20 +312,29 @@ class PredictionWriter:
         logger.debug("Preparing class id lookup")
         self.custom_map = False
         if custom_map:
-            feature_hashes = {o.feature_node_hash for o in self.project.ontology.objects}
+            feature_hashes = {
+                o.feature_node_hash for o in self.project.ontology.objects
+            }
             custom_hashes = set(custom_map.keys())
             if not all([c in feature_hashes for c in custom_hashes]):
-                raise ValueError("custom map keys should correspond to `featureNodeHashes` from the project ontology.")
+                raise ValueError(
+                    "custom map keys should correspond to `featureNodeHashes` from the project ontology."
+                )
 
             self.object_class_id_lookup = custom_map
             self.custom_map = True
         else:
             self.object_class_id_lookup = {}
             for obj in self.project.ontology.objects:
-                self.object_class_id_lookup[obj.feature_node_hash] = len(self.object_class_id_lookup)
+                self.object_class_id_lookup[obj.feature_node_hash] = len(
+                    self.object_class_id_lookup
+                )
 
         self.classification_class_id_lookup = {
-            key: index for index, (key, _) in enumerate(iterate_classification_attribute_options(self.project.ontology))
+            key: index
+            for index, (key, _) in enumerate(
+                iterate_classification_attribute_options(self.project.ontology)
+            )
         }
 
     def __prepare_label_list(self):
@@ -316,11 +348,15 @@ class PredictionWriter:
             if isinstance(attr, RadioAttribute)
         }
 
-        def append_classification_label(du_hash: str, frame: int, classification_dict: dict, answers_dict: dict):
+        def append_classification_label(
+            du_hash: str, frame: int, classification_dict: dict, answers_dict: dict
+        ):
             label_hash = self.lr_lookup[du_hash]
 
             classification = LabelClassification(**classification_dict)
-            classification_answers = answers_dict.get(classification.classificationHash, {}).get("classifications", [])
+            classification_answers = answers_dict.get(
+                classification.classificationHash, {}
+            ).get("classifications", [])
             if not classification_answers:
                 return None
 
@@ -328,11 +364,16 @@ class PredictionWriter:
             classification_answer: Optional[ClassificationAnswer] = None
             for clf_answer_dict in classification_answers:
                 try:
-                    classification_answer_candidate = ClassificationAnswer.parse_obj(clf_answer_dict)
+                    classification_answer_candidate = ClassificationAnswer.parse_obj(
+                        clf_answer_dict
+                    )
                 except:
                     continue
 
-                key = (classification.featureHash, classification_answer_candidate.featureHash)
+                key = (
+                    classification.featureHash,
+                    classification_answer_candidate.featureHash,
+                )
                 if key in valid_feature_node_hashes:
                     classification_answer = classification_answer_candidate
                     break
@@ -340,8 +381,11 @@ class PredictionWriter:
             if classification_answer is None:
                 return
 
-            class_id = self.get_classification_class_id(classification, classification_answer)
-            if class_id is None:  # Ignore unwanted classes (defined by what is in `self.object_class_id_lookup`)
+            class_id = self.get_classification_class_id(
+                classification, classification_answer
+            )
+            # Ignore unwanted classes (defined by what is in `self.object_class_id_lookup`)
+            if class_id is None:
                 print("Returning because there are more options")
                 return
 
@@ -354,9 +398,12 @@ class PredictionWriter:
 
             self.classification_labels.append(label_entry)
 
-        def append_object_label(du_hash: str, frame: int, o: dict, width: int, height: int):
+        def append_object_label(
+            du_hash: str, frame: int, o: dict, width: int, height: int
+        ):
             class_id = self.get_object_class_id(o)
-            if class_id is None:  # Ignore unwanted classes (defined by what is in `self.object_class_id_lookup`)
+            # Ignore unwanted classes (defined by what is in `self.object_class_id_lookup`)
+            if class_id is None:
                 return
 
             label_hash = self.lr_lookup[du_hash]
@@ -395,7 +442,9 @@ class PredictionWriter:
 
             self.object_labels.append(label_entry)
 
-        for lr in tqdm(self.project.label_rows.values(), desc="Preparing labels", leave=True):
+        for lr in tqdm(
+            self.project.label_rows.values(), desc="Preparing labels", leave=True
+        ):
             data_type = lr["data_type"]
             answers = lr["classification_answers"]
             for du_hash, du in lr["data_units"].items():
@@ -423,7 +472,9 @@ class PredictionWriter:
         return None
 
     def get_classification_class_id(
-        self, classification: LabelClassification, classification_answer: ClassificationAnswer
+        self,
+        classification: LabelClassification,
+        classification_answer: ClassificationAnswer,
     ) -> Optional[ClassID]:
         if len(classification_answer.answers) == 0:
             return None
@@ -459,8 +510,14 @@ class PredictionWriter:
 
             # 3. The class idx map
             class_index: Dict[str, OntologyClassificationJSON] = {}
-            for frame_classification, class_id in self.classification_class_id_lookup.items():
-                if class_id in class_index or frame_classification not in self.classification_lookup:
+            for (
+                frame_classification,
+                class_id,
+            ) in self.classification_class_id_lookup.items():
+                if (
+                    class_id in class_index
+                    or frame_classification not in self.classification_lookup
+                ):
                     continue
 
                 selected_option = self.classification_lookup[frame_classification]
@@ -495,7 +552,9 @@ class PredictionWriter:
             # TODO change bbox to coordinate columns
             if "rle" in df:
                 df["rle"] = df["rle"].map(
-                    lambda x: " ".join(x.reshape(-1).astype(str).tolist()) if isinstance(x, np.ndarray) else x
+                    lambda x: " ".join(x.reshape(-1).astype(str).tolist())
+                    if isinstance(x, np.ndarray)
+                    else x
                 )
             if not df.empty:
                 df.to_csv(storage_folder / LABELS_FILE)
@@ -516,8 +575,14 @@ class PredictionWriter:
                     "color": self.object_lookup[k].color,
                 }
 
-            for frame_classification, class_id in self.classification_class_id_lookup.items():
-                if class_id in class_index or frame_classification not in self.classification_lookup:
+            for (
+                frame_classification,
+                class_id,
+            ) in self.classification_class_id_lookup.items():
+                if (
+                    class_id in class_index
+                    or frame_classification not in self.classification_lookup
+                ):
                     continue
 
                 selected_option = self.classification_lookup[frame_classification]
@@ -561,7 +626,9 @@ class PredictionWriter:
             )
         )
 
-    def __add_object_prediction(self, prediction: Prediction, label_hash: str, data_hash: str, frame: int) -> None:
+    def __add_object_prediction(
+        self, prediction: Prediction, label_hash: str, data_hash: str, frame: int
+    ) -> None:
         rle = None
         du = self.project.label_rows[label_hash]["data_units"][data_hash]
 
@@ -569,7 +636,9 @@ class PredictionWriter:
         height = int(du["height"])
 
         if prediction.object is None:
-            raise ValueError(f"prediction.object property is None for object with data hash '{prediction.data_hash}'")
+            raise ValueError(
+                f"prediction.object property is None for object with data hash '{prediction.data_hash}'"
+            )
         class_id = self.object_class_id_lookup.get(prediction.object.feature_hash)
 
         # if class_id == -1:
@@ -584,7 +653,9 @@ class PredictionWriter:
                 polygon = np.array(polygon)
 
             if polygon.ndim != 2:
-                raise ValueError("Polygon argument should have just 2 dimensions: [h, w] or [N, 2]")
+                raise ValueError(
+                    "Polygon argument should have just 2 dimensions: [h, w] or [N, 2]"
+                )
 
             if polygon.shape[1] != 2:  # Polygon is mask
                 np_mask = polygon
@@ -596,7 +667,9 @@ class PredictionWriter:
 
                 np_mask = points_to_mask(polygon, width=width, height=height)  # type: ignore
                 x1, y1, w, h = cv2.boundingRect(
-                    (polygon * np.array([[width, height]])).reshape(-1, 1, 2).astype(int)
+                    (polygon * np.array([[width, height]]))
+                    .reshape(-1, 1, 2)
+                    .astype(int)
                 )  # type: ignore
             x2, y2 = x1 + w, y1 + h
             rle = binary_mask_to_rle(np_mask)
@@ -612,7 +685,8 @@ class PredictionWriter:
         ontology_object = self.object_lookup[prediction.object.feature_hash]
         if ontology_object.shape.value != ptype.value:
             raise ValueError(
-                f"You've passed a {ptype.value} but the provided class id is of type " f"{ontology_object.shape}"
+                f"You've passed a {ptype.value} but the provided class id is of type "
+                f"{ontology_object.shape}"
             )
 
         object_hash = self.__get_unique_object_hash()
@@ -661,8 +735,12 @@ class PredictionWriter:
                 frame = int(data_unit["data_sequence"])
 
         if prediction.classification:
-            self.__add_classification_prediction(prediction, label_hash, data_hash, frame)
+            self.__add_classification_prediction(
+                prediction, label_hash, data_hash, frame
+            )
         elif prediction.object:
             self.__add_object_prediction(prediction, label_hash, data_hash, frame)
         else:
-            raise ValueError("Prediction must have exactly one of `object` or `classification`")
+            raise ValueError(
+                "Prediction must have exactly one of `object` or `classification`"
+            )

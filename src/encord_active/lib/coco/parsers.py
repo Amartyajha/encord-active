@@ -67,7 +67,9 @@ def parse_annotations(annotations: List[Dict]) -> Dict[int, List[CocoAnnotation]
             mask = annToMask(annotation, h=h, w=w)
             poly, inferred_bbox = mask_to_polygon(mask)
             if poly is None or inferred_bbox != annotation["bbox"]:
-                print(f"Annotation '{annotation['id']}', contains an invalid polygon. Skipping ...")
+                print(
+                    f"Annotation '{annotation['id']}', contains an invalid polygon. Skipping ..."
+                )
                 continue
             segmentations = [poly]
 
@@ -119,8 +121,12 @@ def parse_results(results: List[Dict]):
             h, w = segmentations["size"]
             mask = annToMask(result, h=h, w=w)
             poly, inferred_bbox = mask_to_polygon(mask)
-            if poly is None or (bbox is not None and inferred_bbox != tuple(map(int, bbox))):
-                print(f"Annotation '{result['id']}', contains an invalid polygon. Skipping ...")
+            if poly is None or (
+                bbox is not None and inferred_bbox != tuple(map(int, bbox))
+            ):
+                print(
+                    f"Annotation '{result['id']}', contains an invalid polygon. Skipping ..."
+                )
                 continue
             bbox = inferred_bbox
             segmentations = [poly]

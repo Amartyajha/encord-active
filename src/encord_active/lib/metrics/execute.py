@@ -23,7 +23,8 @@ logger = logger.opt(colors=True)
 
 
 def get_metrics(
-    module: Optional[Union[str, list[str]]] = None, filter_func: Callable[[Type[Metric]], bool] = lambda x: True
+    module: Optional[Union[str, list[str]]] = None,
+    filter_func: Callable[[Type[Metric]], bool] = lambda x: True,
 ):
     if module is None:
         module = ["geometric", "heuristic", "semantic"]
@@ -42,23 +43,35 @@ def get_module_metrics(module_name: str, filter_func: Callable) -> List:
     metrics = []
     path = os.path.join(os.path.dirname(__file__), *module_name.split("."))
     for file in os.listdir(path):
-        if file.endswith(".py") and not file.startswith("_") and not file.split(".")[0].endswith("_"):
+        if (
+            file.endswith(".py")
+            and not file.startswith("_")
+            and not file.split(".")[0].endswith("_")
+        ):
             logging.debug("Importing %s", file)
             clsmembers = inspect.getmembers(
-                import_module(f"{base_module_name}{module_name}.{file.split('.')[0]}"), inspect.isclass
+                import_module(f"{base_module_name}{module_name}.{file.split('.')[0]}"),
+                inspect.isclass,
             )
             for cls in clsmembers:
                 if (
                     (issubclass(cls[1], SimpleMetric) and cls[1] != SimpleMetric)
                     or (issubclass(cls[1], Metric) and cls[1] != Metric)
                 ) and filter_func(cls[1]):
-                    metrics.append((f"{base_module_name}{module_name}.{file.split('.')[0]}", f"{cls[0]}"))
+                    metrics.append(
+                        (
+                            f"{base_module_name}{module_name}.{file.split('.')[0]}",
+                            f"{cls[0]}",
+                        )
+                    )
 
     return metrics
 
 
 def is_metric_matching_embedding(embedding_type: EmbeddingType, metric: Metric):
-    if metric.metadata.annotation_type is None or isinstance(metric.metadata.annotation_type, list):
+    if metric.metadata.annotation_type is None or isinstance(
+        metric.metadata.annotation_type, list
+    ):
         return embedding_type == get_embedding_type(metric.metadata.annotation_type)
     else:
         return embedding_type == get_embedding_type([metric.metadata.annotation_type])
@@ -66,7 +79,11 @@ def is_metric_matching_embedding(embedding_type: EmbeddingType, metric: Metric):
 
 def get_metrics_by_embedding_type(embedding_type: EmbeddingType):
     metrics = map(load_metric, get_metrics())
-    return [metric for metric in metrics if is_metric_matching_embedding(embedding_type, metric)]
+    return [
+        metric
+        for metric in metrics
+        if is_metric_matching_embedding(embedding_type, metric)
+    ]
 
 
 def run_metrics_by_embedding_type(embedding_type: EmbeddingType, **kwargs):
@@ -113,11 +130,17 @@ def run_metrics(filter_func: Callable[[Type[Metric]], bool] = lambda x: True, **
 
 
 def load_metric(module_classname_pair: Tuple[str, str]) -> Metric:
-    return import_module(module_classname_pair[0]).__getattribute__(module_classname_pair[1])()
+    return import_module(module_classname_pair[0]).__getattribute__(
+        module_classname_pair[1]
+    )()
 
 
-def _write_meta_file(cache_dir: Path, metric: Union[Metric, SimpleMetric], stats: StatisticsObserver):
-    meta_file = (cache_dir / "metrics" / f"{metric.metadata.get_unique_name()}.meta.json").expanduser()
+def _write_meta_file(
+    cache_dir: Path, metric: Union[Metric, SimpleMetric], stats: StatisticsObserver
+):
+    meta_file = (
+        cache_dir / "metrics" / f"{metric.metadata.get_unique_name()}.meta.json"
+    ).expanduser()
     metric.metadata.stats = StatsMetadata.from_stats_observer(stats)
 
     with meta_file.open("w") as f:
@@ -141,11 +164,18 @@ def _execute_metrics(cache_dir: Path, iterator: Iterator, metrics: list[Metric])
         _write_meta_file(cache_dir, metric, stats)
 
 
-def _execute_simple_metrics(cache_dir: Path, iterator: Iterator, metrics: list[SimpleMetric]):
+def _execute_simple_metrics(
+    cache_dir: Path, iterator: Iterator, metrics: list[SimpleMetric]
+):
     if len(metrics) == 0:
         return
-    logger.info(f"Running metrics <blue>{', '.join(metric.metadata.title for metric in metrics)}</blue>")
-    csv_writers = [CSVMetricWriter(cache_dir, iterator, prefix=metric.metadata.get_unique_name()) for metric in metrics]
+    logger.info(
+        f"Running metrics <blue>{', '.join(metric.metadata.title for metric in metrics)}</blue>"
+    )
+    csv_writers = [
+        CSVMetricWriter(cache_dir, iterator, prefix=metric.metadata.get_unique_name())
+        for metric in metrics
+    ]
     stats_observers = [StatisticsObserver() for _ in metrics]
     for csv_w, stats in zip(csv_writers, stats_observers):
         csv_w.attach(stats)
@@ -173,7 +203,9 @@ def execute_metrics(
     **kwargs,
 ):
     project = None if use_cache_only else fetch_encord_project_instance(data_dir)
-    iterator = iterator_cls(data_dir, project=project, skip_labeled_data=skip_labeled_data, **kwargs)
+    iterator = iterator_cls(
+        data_dir, project=project, skip_labeled_data=skip_labeled_data, **kwargs
+    )
 
     if "prediction_type" in kwargs:
         cache_dir = data_dir / "predictions" / kwargs["prediction_type"].value

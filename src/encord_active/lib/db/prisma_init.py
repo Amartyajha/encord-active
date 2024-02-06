@@ -24,16 +24,29 @@ def ensure_prisma_db(db_path: Path):
         return
 
     env = {"MY_DATABASE_URL": f"file:{db_path}"}
-    failure = prisma_run(["migrate", "deploy", f"--schema={PRISMA_SCHEMA_FILE}"], env=env)
+    failure = prisma_run(
+        ["migrate", "deploy", f"--schema={PRISMA_SCHEMA_FILE}"], env=env
+    )
     # TODO: remove me before release
     if failure:
-        prisma_run(["migrate", "reset", "--force", "--skip-generate", f"--schema={PRISMA_SCHEMA_FILE}"], env=env)
+        prisma_run(
+            [
+                "migrate",
+                "reset",
+                "--force",
+                "--skip-generate",
+                f"--schema={PRISMA_SCHEMA_FILE}",
+            ],
+            env=env,
+        )
 
     CACHE_ENSURE_PRISMA_DB.add(db_key)
 
 
 def generate_prisma_client():
-    logger.info("Regenerating prisma DB, please re-run the command if an issue is detected")
+    logger.info(
+        "Regenerating prisma DB, please re-run the command if an issue is detected"
+    )
     prisma_run(["generate", f"--schema={PRISMA_SCHEMA_FILE}"])
 
 

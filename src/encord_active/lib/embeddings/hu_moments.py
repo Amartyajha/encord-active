@@ -25,7 +25,8 @@ def generate_hu_embeddings(iterator: Iterator):
                     continue
 
                 points = get_object_coordinates(obj)
-                if not points:  # avoid corrupted objects without vertices (empty list - [])
+                # avoid corrupted objects without vertices (empty list - [])
+                if not points:
                     continue
 
                 polygon = (np.array(points) * (width, height)).astype(np.int32)
@@ -53,5 +54,7 @@ def get_hu_embeddings(iterator: Iterator, *, force: bool = False) -> pd.DataFram
             hu_moments_df = pd.read_csv(hu_moments_path)
             logger.info("Done!")
 
-    hu_moments_df = hu_moments_df.sort_values(["identifier"], ascending=True).reset_index()
+    hu_moments_df = hu_moments_df.sort_values(
+        ["identifier"], ascending=True
+    ).reset_index()
     return hu_moments_df

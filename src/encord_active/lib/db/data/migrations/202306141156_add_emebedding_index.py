@@ -17,6 +17,10 @@ def project_has_embedding_type(pfs: ProjectFileStructure, et: EmbeddingType):
 
 
 def up(pfs: ProjectFileStructure):
-    for embedding_type in [EmbeddingType.IMAGE, EmbeddingType.OBJECT, EmbeddingType.CLASSIFICATION]:
+    for embedding_type in [
+        EmbeddingType.IMAGE,
+        EmbeddingType.OBJECT,
+        EmbeddingType.CLASSIFICATION,
+    ]:
         if project_has_embedding_type(pfs, embedding_type):
             EmbeddingIndex.from_project(pfs, embedding_type)

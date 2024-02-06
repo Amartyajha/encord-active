@@ -33,7 +33,9 @@ $$h_{\lambda}(x) = \frac{1}{x^\intercal x}$$
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
 
         logger.info("My custom logging")
 
@@ -42,7 +44,9 @@ $$h_{\lambda}(x) = \frac{1}{x^\intercal x}$$
 
         for data_unit, _ in iterator.iterate(desc="Progress bar description"):
             # Frame level score (data quality)
-            writer.write(1337, description="Your description of the score [can be omitted]")
+            writer.write(
+                1337, description="Your description of the score [can be omitted]"
+            )
 
             for obj in data_unit["labels"].get("objects", []):
                 # Label (object/classification) level score (label/model prediction quality)
@@ -58,7 +62,11 @@ $$h_{\lambda}(x) = \frac{1}{x^\intercal x}$$
 
                 # Do your thing (inference)
                 # Then
-                writer.write(42, labels=obj, description="Your description of the score [can be omitted]")
+                writer.write(
+                    42,
+                    labels=obj,
+                    description="Your description of the score [can be omitted]",
+                )
 
 
 if __name__ == "__main__":

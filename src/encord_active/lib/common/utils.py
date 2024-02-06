@@ -29,11 +29,11 @@ from shapely.errors import ShapelyDeprecationWarning
 from shapely.geometry import MultiPolygon, Polygon
 from tqdm.auto import tqdm
 
+from encord_active.lib.coco.datastructure import CocoBbox
 from encord_active.lib.labels.object import BoxShapes, ObjectShape, SimpleShapes
 
 # Silence shapely deprecation warnings from v1.* to v2.0
 warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
-from encord_active.lib.coco.datastructure import CocoBbox
 
 
 class DataHashMapping:
@@ -55,7 +55,11 @@ class DataHashMapping:
         self._inverse_mapping[to_hash] = from_hash
 
     def get(self, from_hash: str, inverse: bool = False):
-        return self._mapping[from_hash] if not inverse else self._inverse_mapping[from_hash]
+        return (
+            self._mapping[from_hash]
+            if not inverse
+            else self._inverse_mapping[from_hash]
+        )
 
     def keys(self, inverse: bool = False):
         return self._mapping.keys() if not inverse else self._inverse_mapping.keys()
@@ -79,7 +83,9 @@ def load_json(json_file: Path) -> Optional[dict]:
             return None
 
 
-def get_du_size(data_unit: dict, image: Optional[Image.Image] = None) -> Optional[Tuple[int, int]]:
+def get_du_size(
+    data_unit: dict, image: Optional[Image.Image] = None
+) -> Optional[Tuple[int, int]]:
     if "width" in data_unit and "height" in data_unit:
         return int(data_unit["height"]), int(data_unit["width"])
 
@@ -98,7 +104,10 @@ def get_object_coordinates(o: dict) -> Optional[list[tuple[Any, Any]]]:
     """
     if o["shape"] in SimpleShapes:
         points_dict = o[o["shape"]]
-        points = [(points_dict[str(i)]["x"], points_dict[str(i)]["y"]) for i in range(len(points_dict))]
+        points = [
+            (points_dict[str(i)]["x"], points_dict[str(i)]["y"])
+            for i in range(len(points_dict))
+        ]
     elif o["shape"] == ObjectShape.BOUNDING_BOX:
         bbox = o["boundingBox"]
         points = [
@@ -201,7 +210,9 @@ def slice_video_into_frames(
 
     if frames_dir_existed:
         frames = {
-            int(p.stem.rsplit("_", 1)[-1].split(".", 1)[0]): p for p in frames_dir.iterdir() if p.suffix == ".png"
+            int(p.stem.rsplit("_", 1)[-1].split(".", 1)[0]): p
+            for p in frames_dir.iterdir()
+            if p.suffix == ".png"
         }
         if frames:
             return frames, []
@@ -257,7 +268,9 @@ def get_bbox_from_encord_label_object(obj: dict, w: int, h: int) -> Optional[tup
     if transformed_obj is not None:
         return cv2.boundingRect(transformed_obj)
     else:
-        logger.debug("Detected invalid polygon (self-crossing or less than 3 vertices).")
+        logger.debug(
+            "Detected invalid polygon (self-crossing or less than 3 vertices)."
+        )
         return None
 
 
@@ -281,7 +294,9 @@ def fix_duplicate_image_orders_in_knn_graph_all_rows(nearest_items: np.ndarray):
                 row[0], row[target_index[0][0]] = row[target_index[0][0]], row[0]
 
 
-def fix_duplicate_image_orders_in_knn_graph_single_row(row_no: int, nearest_items: np.ndarray) -> np.ndarray:
+def fix_duplicate_image_orders_in_knn_graph_single_row(
+    row_no: int, nearest_items: np.ndarray
+) -> np.ndarray:
     """
     Duplicate images create problem in nearest neighbor order, for example for index 6 its closest
     neighbors can be [5,6,1,9,3] if 5 and 6 is duplicate, it should be [6,5,1,9,3]. This function ensures that
@@ -294,7 +309,10 @@ def fix_duplicate_image_orders_in_knn_graph_single_row(row_no: int, nearest_item
         return nearest_items
     else:
         target_index = np.where(nearest_items[0] == row_no)
-        nearest_items[0, 0], nearest_items[0, target_index[0]] = nearest_items[0, target_index[0]], nearest_items[0, 0]
+        nearest_items[0, 0], nearest_items[0, target_index[0]] = (
+            nearest_items[0, target_index[0]],
+            nearest_items[0, 0],
+        )
         return nearest_items
 
 
@@ -312,7 +330,12 @@ def binary_mask_to_rle(mask: np.ndarray) -> RLEData:
     """
     flat_mask = mask.flatten()
     fix_first = flat_mask[0] == 1
-    flat_mask = np.pad(flat_mask, (1, 1), "constant", constant_values=(1 - flat_mask[0], 1 - flat_mask[-1]))
+    flat_mask = np.pad(
+        flat_mask,
+        (1, 1),
+        "constant",
+        constant_values=(1 - flat_mask[0], 1 - flat_mask[-1]),
+    )
 
     switch_indices = np.where(flat_mask[1:] != flat_mask[:-1])[0]
     rle = switch_indices[1:] - switch_indices[:-1]
@@ -362,7 +385,9 @@ def __rle_iou(rle1: RLEData, rle2: RLEData) -> float:
     return mask_iou(m1, m2)
 
 
-def rle_iou(rle1: Union[RLEData, list[RLEData]], rle2: Union[RLEData, list[RLEData]]) -> np.ndarray:
+def rle_iou(
+    rle1: Union[RLEData, list[RLEData]], rle2: Union[RLEData, list[RLEData]]
+) -> np.ndarray:
     """
     Compute intersection over union for rle dictionaries.
     """

@@ -19,7 +19,6 @@ logger = logger.opt(colors=True)
 
 def get_area(obj: dict) -> float:
     if obj["shape"] in {*BoxShapes, ObjectShape.POLYGON}:
-
         points = get_object_coordinates(obj)
         if points is None or len(points) < 3:
             logger.debug("Less than 3 points")
@@ -62,7 +61,9 @@ class RelativeObjectAreaMetric(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, _ in iterator.iterate(desc="Computing object area"):
@@ -99,7 +100,9 @@ class OccupiedTotalAreaMetric(Metric):
         if not iterator.project.ontology.objects:
             return
 
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, _ in iterator.iterate(desc="Computing total object area"):
@@ -109,7 +112,8 @@ class OccupiedTotalAreaMetric(Metric):
                     continue
 
                 poly = get_polygon(obj)
-                if not poly:  # avoid corrupted objects without vertices ([]) and polygons with less than 3 vertices
+                # avoid corrupted objects without vertices ([]) and polygons with less than 3 vertices
+                if not poly:
                     continue
                 polygons.append(poly)
 
@@ -140,7 +144,9 @@ class AbsoluteObjectAreaMetric(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, image in iterator.iterate(desc="Computing pixel area"):
@@ -181,7 +187,9 @@ class ObjectAspectRatioMetric(Metric):
         )
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
         found_any = False
 
         for data_unit, image in iterator.iterate(desc="Computing aspect ratio"):

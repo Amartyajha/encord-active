@@ -31,7 +31,9 @@ class PrismaConnection:
 
         self.cache_db = cache_db
         self.db: "Optional[prisma.Prisma]" = None
-        self.datasource = DatasourceOverride(url=f"file:{project_file_structure.prisma_db.absolute()}")
+        self.datasource = DatasourceOverride(
+            url=f"file:{project_file_structure.prisma_db.absolute()}"
+        )
 
     def __enter__(self) -> "prisma.Prisma":
         from prisma import Prisma

@@ -15,7 +15,9 @@ def get_timestamp_of_migration_file(file: Path):
     return int(file.name.split("_")[0])
 
 
-def run_data_migrations(pfs: ProjectFileStructure, final_data_version: Optional[int] = None):
+def run_data_migrations(
+    pfs: ProjectFileStructure, final_data_version: Optional[int] = None
+):
     project_meta = fetch_project_meta(pfs.project_dir)
     last_migration_timestemp = project_meta.get("data_version") or 0
 
@@ -24,7 +26,10 @@ def run_data_migrations(pfs: ProjectFileStructure, final_data_version: Optional[
         migration
         for migration in all_migrations
         if get_timestamp_of_migration_file(migration) > last_migration_timestemp
-        and (final_data_version is None or final_data_version >= get_timestamp_of_migration_file(migration))
+        and (
+            final_data_version is None
+            or final_data_version >= get_timestamp_of_migration_file(migration)
+        )
     ]
     migrations_to_run.sort(key=lambda file: get_timestamp_of_migration_file(file))
 
@@ -44,6 +49,11 @@ def run_data_migrations(pfs: ProjectFileStructure, final_data_version: Optional[
             migration.up(pfs)
 
     # This can be conditionally disabled for ease of debugging variations in the project version.
-    if os.environ.get("ENCORD_ACTIVE_DEBUGGING_DISABLE_MIGRATION_TIMESTAMPS", "0") != "1":
-        project_meta["data_version"] = get_timestamp_of_migration_file(migrations_to_run[-1])
+    if (
+        os.environ.get("ENCORD_ACTIVE_DEBUGGING_DISABLE_MIGRATION_TIMESTAMPS", "0")
+        != "1"
+    ):
+        project_meta["data_version"] = get_timestamp_of_migration_file(
+            migrations_to_run[-1]
+        )
         update_project_meta(pfs.project_dir, project_meta)

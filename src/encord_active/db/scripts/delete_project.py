@@ -25,10 +25,14 @@ from encord_active.db.models import (
 )
 
 
-def delete_project_from_db(engine: Engine, project_hash: uuid.UUID, error_on_missing: bool = True) -> None:
+def delete_project_from_db(
+    engine: Engine, project_hash: uuid.UUID, error_on_missing: bool = True
+) -> None:
     # Attempt to rely on cascade delete
     with Session(engine) as sess:
-        old_project = sess.exec(select(Project).where(Project.project_hash == project_hash)).first()
+        old_project = sess.exec(
+            select(Project).where(Project.project_hash == project_hash)
+        ).first()
         if old_project is None:
             if error_on_missing:
                 raise ValueError("BUG: Could not find old project")
@@ -40,7 +44,9 @@ def delete_project_from_db(engine: Engine, project_hash: uuid.UUID, error_on_mis
     # Fallback (sqlite can fail to run cascade deletion)
     with Session(engine) as sess:
         prediction_hashes = sess.exec(
-            select(ProjectPrediction.prediction_hash).where(ProjectPrediction.project_hash == project_hash)
+            select(ProjectPrediction.prediction_hash).where(
+                ProjectPrediction.project_hash == project_hash
+            )
         ).fetchall()
         project_types: List[
             Type[
@@ -90,13 +96,17 @@ def delete_project_from_db(engine: Engine, project_hash: uuid.UUID, error_on_mis
             ProjectPredictionAnalyticsFalseNegatives,
         ]
         for project_ty in project_types:
-            values = sess.exec(select(project_ty).where(project_ty.project_hash == project_hash)).fetchall()
+            values = sess.exec(
+                select(project_ty).where(project_ty.project_hash == project_hash)
+            ).fetchall()
             for val in values:
                 sess.delete(val)
         for prediction_ty in prediction_types:
             for prediction_hash in prediction_hashes:
                 values = sess.exec(
-                    select(prediction_ty).where(prediction_ty.prediction_hash == prediction_hash)
+                    select(prediction_ty).where(
+                        prediction_ty.prediction_hash == prediction_hash
+                    )
                 ).fetchall()
                 for val in values:
                     sess.delete(val)

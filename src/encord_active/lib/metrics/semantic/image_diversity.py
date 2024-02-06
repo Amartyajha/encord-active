@@ -40,7 +40,9 @@ merged by keeping the samples of classes the same for the first _N_ samples.
     def _get_cluster_size(self, iterator: Iterator) -> int:
         default_k_size = 10
         if iterator.project_file_structure.ontology.is_file():
-            ontology_dict = json.loads(iterator.project_file_structure.ontology.read_text(encoding="utf-8"))
+            ontology_dict = json.loads(
+                iterator.project_file_structure.ontology.read_text(encoding="utf-8")
+            )
             if len(ontology_dict.get("objects", [])) > 0:
                 return len(ontology_dict["objects"])
             elif len(ontology_dict.get("classifications", [])) > 0:
@@ -48,7 +50,9 @@ merged by keeping the samples of classes the same for the first _N_ samples.
                     ClassificationType.RADIO.value,
                     ClassificationType.CHECKLIST.value,
                 ]:
-                    return len(ontology_dict["classifications"][0]["attributes"][0]["options"])
+                    return len(
+                        ontology_dict["classifications"][0]["attributes"][0]["options"]
+                    )
                 else:
                     return default_k_size
             else:
@@ -57,8 +61,12 @@ merged by keeping the samples of classes the same for the first _N_ samples.
             return default_k_size
 
     def _get_difficulty_ranking(self, cluster_size: int) -> Dict[str, int]:
-        id_to_data_hash: Dict[int, str] = {i: emb["data_unit"] for i, emb in enumerate(self.label_embeddings)}
-        embeddings = np.array([emb["embedding"] for emb in self.label_embeddings]).astype(np.float32)
+        id_to_data_hash: Dict[int, str] = {
+            i: emb["data_unit"] for i, emb in enumerate(self.label_embeddings)
+        }
+        embeddings = np.array(
+            [emb["embedding"] for emb in self.label_embeddings]
+        ).astype(np.float32)
         kmeans: KMeans = KMeans(n_clusters=cluster_size, n_init="auto").fit(embeddings)  # type: ignore
 
         cluster_ids_all = []
@@ -67,7 +75,9 @@ merged by keeping the samples of classes the same for the first _N_ samples.
             cluster_values = embeddings[kmeans.labels_ == i]
             cluster_ids = np.where(kmeans.labels_ == i)[0]
 
-            distances_to_center = np.linalg.norm(cluster_values - kmeans.cluster_centers_[i], axis=1)
+            distances_to_center = np.linalg.norm(
+                cluster_values - kmeans.cluster_centers_[i], axis=1
+            )
             cluster_ids_all.append(cluster_ids[distances_to_center.argsort()])
 
         common_array_indices = []
@@ -83,14 +93,17 @@ merged by keeping the samples of classes the same for the first _N_ samples.
             counter += 1
 
         data_hash_to_score: Dict[str, int] = {
-            id_to_data_hash[item]: counter + 1 for counter, item in enumerate(common_array_indices)
+            id_to_data_hash[item]: counter + 1
+            for counter, item in enumerate(common_array_indices)
         }
 
         return data_hash_to_score
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
         if self.metadata.embedding_type:
-            self.label_embeddings = get_embeddings(iterator, embedding_type=self.metadata.embedding_type)
+            self.label_embeddings = get_embeddings(
+                iterator, embedding_type=self.metadata.embedding_type
+            )
         else:
             logger.error(
                 f"<yellow>[Skipping]</yellow> No `embedding_type` provided for the {self.metadata.title} metric!"
@@ -103,7 +116,9 @@ merged by keeping the samples of classes the same for the first _N_ samples.
 
         cluster_size = self._get_cluster_size(iterator)
         if len(self.label_embeddings) < cluster_size:
-            logger.info("<yellow>[Skipping]</yellow> There are very few samples compared to the number of classes.")
+            logger.info(
+                "<yellow>[Skipping]</yellow> There are very few samples compared to the number of classes."
+            )
             return
 
         data_hash_to_score = self._get_difficulty_ranking(cluster_size)

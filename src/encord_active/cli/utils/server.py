@@ -28,7 +28,9 @@ def ensure_safe_project(root_path: Path, final_data_version: Optional[int] = Non
 
         ensure_initialised_merged_metrics(project_file_structure)
         ensure_prisma_db(project_file_structure.prisma_db)
-        run_data_migrations(project_file_structure, final_data_version=final_data_version)
+        run_data_migrations(
+            project_file_structure, final_data_version=final_data_version
+        )
 
 
 def is_port_in_use(port: int) -> bool:

@@ -17,17 +17,27 @@ def create_pr_chart_plotly(
     precisions: DataFrame[PrecisionRecallSchema],
     annotation_colors: list[dict],
 ):
-    _metrics = cast(DataFrame[PerformanceMetricSchema], metrics[~metrics[_M_COLS.metric].isin({"mAR", "mAP"})].copy())
+    _metrics = cast(
+        DataFrame[PerformanceMetricSchema],
+        metrics[~metrics[_M_COLS.metric].isin({"mAR", "mAP"})].copy(),
+    )
 
     tmp = "m" + _metrics["metric"].str.split("_", n=1, expand=True)
     tmp.columns = ["group", "_"]  # type:ignore
     _metrics["group"] = tmp["group"]  # type:ignore
     _metrics["average"] = "average"  # Legend title
 
-    _metrics.sort_values(by=["group", _M_COLS.value], ascending=[False, True], inplace=True)
+    _metrics.sort_values(
+        by=["group", _M_COLS.value], ascending=[False, True], inplace=True
+    )
 
     fig = make_subplots(
-        rows=1, cols=2, subplot_titles=("Per class Average Precision and Recall", "Precision-Recall Curve")
+        rows=1,
+        cols=2,
+        subplot_titles=(
+            "Per class Average Precision and Recall",
+            "Precision-Recall Curve",
+        ),
     )
 
     colors = {}
@@ -37,8 +47,12 @@ def create_pr_chart_plotly(
     for class_name in _metrics[PerformanceMetricSchema.class_name].unique():
         fig.add_trace(
             go.Bar(
-                x=_metrics.loc[_metrics[PerformanceMetricSchema.class_name] == class_name][_M_COLS.value],
-                y=_metrics.loc[_metrics[PerformanceMetricSchema.class_name] == class_name][_M_COLS.metric],
+                x=_metrics.loc[
+                    _metrics[PerformanceMetricSchema.class_name] == class_name
+                ][_M_COLS.value],
+                y=_metrics.loc[
+                    _metrics[PerformanceMetricSchema.class_name] == class_name
+                ][_M_COLS.metric],
                 orientation="h",
                 name=class_name,
                 legendgroup=class_name,
@@ -67,12 +81,12 @@ def create_pr_chart_plotly(
     for class_name in precisions[PrecisionRecallSchema.class_name].unique():
         fig.add_trace(
             go.Scatter(
-                x=precisions.loc[precisions[PrecisionRecallSchema.class_name] == class_name][
-                    PrecisionRecallSchema.recall
-                ],
-                y=precisions.loc[precisions[PrecisionRecallSchema.class_name] == class_name][
-                    PrecisionRecallSchema.precision
-                ],
+                x=precisions.loc[
+                    precisions[PrecisionRecallSchema.class_name] == class_name
+                ][PrecisionRecallSchema.recall],
+                y=precisions.loc[
+                    precisions[PrecisionRecallSchema.class_name] == class_name
+                ][PrecisionRecallSchema.precision],
                 mode="lines+markers",
                 name=class_name,
                 legendgroup=class_name,

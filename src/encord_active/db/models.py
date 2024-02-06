@@ -65,7 +65,11 @@ class ProjectEmbeddingReduction(SQLModel, table=True):
     reduction_type: EmbeddingReductionType
     reduction_bytes: bytes
 
-    __table_args__ = (fk_constraint(["project_hash"], Project, "active_project_embedding_reduction_project_fk"),)
+    __table_args__ = (
+        fk_constraint(
+            ["project_hash"], Project, "active_project_embedding_reduction_project_fk"
+        ),
+    )
 
 
 class ProjectDataMetadata(SQLModel, table=True):
@@ -84,7 +88,9 @@ class ProjectDataMetadata(SQLModel, table=True):
     data_type: str
     label_row_json: dict = Field(sa_column=Column(JSON))
 
-    __table_args__ = (fk_constraint(["project_hash"], Project, "active_project_data_project_fk"),)
+    __table_args__ = (
+        fk_constraint(["project_hash"], Project, "active_project_data_project_fk"),
+    )
 
 
 class ProjectDataUnitMetadata(SQLModel, table=True):
@@ -107,8 +113,18 @@ class ProjectDataUnitMetadata(SQLModel, table=True):
     classifications: list = Field(sa_column=Column(JSON))
 
     __table_args__ = (
-        Index("active_project_data_units_unique_du_hash_frame", "project_hash", "du_hash", "frame", unique=True),
-        fk_constraint(["project_hash", "data_hash"], ProjectDataMetadata, "active_data_unit_data_fk"),
+        Index(
+            "active_project_data_units_unique_du_hash_frame",
+            "project_hash",
+            "du_hash",
+            "frame",
+            unique=True,
+        ),
+        fk_constraint(
+            ["project_hash", "data_hash"],
+            ProjectDataMetadata,
+            "active_data_unit_data_fk",
+        ),
     )
 
 
@@ -126,7 +142,11 @@ def define_metric_indices(
     extra: Iterable[Union[Index, ForeignKeyConstraint]],
 ) -> Tuple[Union[Index, ForeignKeyConstraint], ...]:
     values: List[Union[Index, ForeignKeyConstraint]] = [
-        Index(f"{metric_prefix}_project_hash_{metric_name}_index", "project_hash", metric_name)
+        Index(
+            f"{metric_prefix}_project_hash_{metric_name}_index",
+            "project_hash",
+            metric_name,
+        )
         for metric_name, metric_metadata in metrics.items()
     ]
     values = values + list(extra)
@@ -158,7 +178,8 @@ class ProjectDataAnalytics(SQLModel, table=True):
     # Image Only
     metric_object_count: Optional[int] = MetricFieldTypePositiveInteger
     metric_object_density: Optional[float] = MetricFieldTypeNormal
-    metric_image_difficulty: Optional[float]  # FIXME: is the output of this always an integer??
+    # FIXME: is the output of this always an integer??
+    metric_image_difficulty: Optional[float]
     metric_image_singularity: Optional[float] = MetricFieldTypeNormal
 
     # 4x custom normal metrics
@@ -172,7 +193,9 @@ class ProjectDataAnalytics(SQLModel, table=True):
         DataMetrics,
         [
             fk_constraint(
-                ["project_hash", "du_hash", "frame"], ProjectDataUnitMetadata, "active_data_project_analytics_data_fk"
+                ["project_hash", "du_hash", "frame"],
+                ProjectDataUnitMetadata,
+                "active_data_project_analytics_data_fk",
             )
         ],
     )
@@ -192,7 +215,9 @@ class ProjectDataAnalyticsExtra(SQLModel, table=True):
 
     __table_args__ = (
         fk_constraint(
-            ["project_hash", "du_hash", "frame"], ProjectDataAnalytics, "active_data_project_data_analytics_extra_fk"
+            ["project_hash", "du_hash", "frame"],
+            ProjectDataAnalytics,
+            "active_data_project_data_analytics_extra_fk",
         ),
     )
 
@@ -209,13 +234,29 @@ class ProjectDataAnalyticsReduced(SQLModel, table=True):
 
     __table_args__ = (
         fk_constraint(
-            ["project_hash", "du_hash", "frame"], ProjectDataAnalytics, "active_data_project_data_analytics_reduced_fk"
+            ["project_hash", "du_hash", "frame"],
+            ProjectDataAnalytics,
+            "active_data_project_data_analytics_reduced_fk",
         ),
         fk_constraint(
-            ["reduction_hash"], ProjectEmbeddingReduction, "active_data_project_data_analytics_reduced_reduction_fk"
+            ["reduction_hash"],
+            ProjectEmbeddingReduction,
+            "active_data_project_data_analytics_reduced_reduction_fk",
         ),
-        Index("active_project_analytics_data_reduced_x", "reduction_hash", "project_hash", "x", "y"),
-        Index("active_project_analytics_data_reduced_y", "reduction_hash", "project_hash", "y", "x"),
+        Index(
+            "active_project_analytics_data_reduced_x",
+            "reduction_hash",
+            "project_hash",
+            "x",
+            "y",
+        ),
+        Index(
+            "active_project_analytics_data_reduced_y",
+            "reduction_hash",
+            "project_hash",
+            "y",
+            "x",
+        ),
     )
 
 
@@ -258,7 +299,9 @@ class ProjectAnnotationAnalytics(SQLModel, table=True):
     metric_label_border_closeness: Optional[float] = MetricFieldTypeNormal
     metric_label_poly_similarity: Optional[float] = MetricFieldTypeNormal
     metric_label_missing_or_broken_tracks: Optional[float] = MetricFieldTypeNormal
-    metric_label_inconsistent_classification_and_track: Optional[float] = MetricFieldTypeNormal
+    metric_label_inconsistent_classification_and_track: Optional[
+        float
+    ] = MetricFieldTypeNormal
     metric_label_shape_outlier: Optional[float] = MetricFieldTypeNormal
     metric_label_confidence: float = MetricFieldTypeNormal
 
@@ -271,7 +314,13 @@ class ProjectAnnotationAnalytics(SQLModel, table=True):
     __table_args__ = define_metric_indices(
         "active_label",
         AnnotationMetrics,
-        [fk_constraint(["project_hash", "du_hash", "frame"], ProjectDataUnitMetadata, "active_label_project_data_fk")],
+        [
+            fk_constraint(
+                ["project_hash", "du_hash", "frame"],
+                ProjectDataUnitMetadata,
+                "active_label_project_data_fk",
+            )
+        ],
     )
 
 
@@ -320,8 +369,20 @@ class ProjectAnnotationAnalyticsReduced(SQLModel, table=True):
             ProjectEmbeddingReduction,
             "active_data_project_annotation_analytics_reduced_reduction_fk",
         ),
-        Index("active_project_analytics_annotation_reduced_x", "reduction_hash", "project_hash", "x", "y"),
-        Index("active_project_analytics_annotation_reduced_y", "reduction_hash", "project_hash", "y", "x"),
+        Index(
+            "active_project_analytics_annotation_reduced_x",
+            "reduction_hash",
+            "project_hash",
+            "x",
+            "y",
+        ),
+        Index(
+            "active_project_analytics_annotation_reduced_y",
+            "reduction_hash",
+            "project_hash",
+            "y",
+            "x",
+        ),
     )
 
 
@@ -332,7 +393,9 @@ class ProjectTag(SQLModel, table=True):
     name: str = Field(min_length=1, max_length=256)
     description: str
 
-    __table_args__ = (fk_constraint(["project_hash"], Project, "active_project_tags_project_fk"),)
+    __table_args__ = (
+        fk_constraint(["project_hash"], Project, "active_project_tags_project_fk"),
+    )
 
 
 class ProjectTaggedDataUnit(SQLModel, table=True):
@@ -343,9 +406,13 @@ class ProjectTaggedDataUnit(SQLModel, table=True):
     tag_hash: UUID = Field(primary_key=True, index=True)
 
     __table_args__ = (
-        fk_constraint(["tag_hash"], ProjectTag, "active_project_tagged_data_units_tag_fk"),
         fk_constraint(
-            ["project_hash", "du_hash", "frame"], ProjectDataAnalytics, "active_project_tagged_data_units_analysis_fk"
+            ["tag_hash"], ProjectTag, "active_project_tagged_data_units_tag_fk"
+        ),
+        fk_constraint(
+            ["project_hash", "du_hash", "frame"],
+            ProjectDataAnalytics,
+            "active_project_tagged_data_units_analysis_fk",
         ),
     )
 
@@ -373,7 +440,11 @@ class ProjectPrediction(SQLModel, table=True):
     prediction_hash: UUID = Field(primary_key=True)
     project_hash: UUID
     name: str
-    __table_args__ = (fk_constraint(["project_hash"], Project, "active_project_prediction_project_hash_fk"),)
+    __table_args__ = (
+        fk_constraint(
+            ["project_hash"], Project, "active_project_prediction_project_hash_fk"
+        ),
+    )
 
 
 @assert_cls_metrics_match(AnnotationMetrics, CUSTOM_METRIC_COUNT)
@@ -392,7 +463,8 @@ class ProjectPredictionAnalytics(SQLModel, table=True):
     # Prediction metadata: (for iou dependent TP vs FP split & feature hash grouping)
     match_object_hash: Optional[str] = Field(min_length=8, max_length=8)
     match_feature_hash: Optional[str] = Field(min_length=8, max_length=8)
-    match_duplicate_iou: float = Field(ge=-1, le=1)  # 0 -> 1, -1 is special case always match.
+    # 0 -> 1, -1 is special case always match.
+    match_duplicate_iou: float = Field(ge=-1, le=1)
     iou: float = Field(ge=0, le=1)
 
     # Prediction object metrics
@@ -419,7 +491,9 @@ class ProjectPredictionAnalytics(SQLModel, table=True):
     metric_label_border_closeness: Optional[float] = MetricFieldTypeNormal
     metric_label_poly_similarity: Optional[float] = MetricFieldTypeNormal
     metric_label_missing_or_broken_tracks: Optional[float] = MetricFieldTypeNormal
-    metric_label_inconsistent_classification_and_track: Optional[float] = MetricFieldTypeNormal
+    metric_label_inconsistent_classification_and_track: Optional[
+        float
+    ] = MetricFieldTypeNormal
     metric_label_shape_outlier: Optional[float] = MetricFieldTypeNormal
     metric_label_confidence: float = MetricFieldTypeNormal
 
@@ -430,7 +504,11 @@ class ProjectPredictionAnalytics(SQLModel, table=True):
     metric_custom3: Optional[float] = MetricFieldTypeNormal
 
     __table_args__ = (
-        fk_constraint(["prediction_hash"], ProjectPrediction, "active_project_prediction_objects_prediction_fk"),
+        fk_constraint(
+            ["prediction_hash"],
+            ProjectPrediction,
+            "active_project_prediction_objects_prediction_fk",
+        ),
         Index(
             "active_project_prediction_objects_confidence_index",
             "prediction_hash",
@@ -495,8 +573,20 @@ class ProjectPredictionAnalyticsReduced(SQLModel, table=True):
             ProjectEmbeddingReduction,
             "active_data_project_prediction_analytics_reduced_reduction_fk",
         ),
-        Index("active_project_analytics_prediction_reduced_x", "reduction_hash", "prediction_hash", "x", "y"),
-        Index("active_project_analytics_prediction_reduced_y", "reduction_hash", "prediction_hash", "y", "x"),
+        Index(
+            "active_project_analytics_prediction_reduced_x",
+            "reduction_hash",
+            "prediction_hash",
+            "x",
+            "y",
+        ),
+        Index(
+            "active_project_analytics_prediction_reduced_y",
+            "reduction_hash",
+            "prediction_hash",
+            "y",
+            "x",
+        ),
     )
 
 
@@ -543,7 +633,9 @@ class ProjectPredictionAnalyticsFalseNegatives(SQLModel, table=True):
     metric_label_border_closeness: Optional[float] = MetricFieldTypeNormal
     metric_label_poly_similarity: Optional[float] = MetricFieldTypeNormal
     metric_label_missing_or_broken_tracks: Optional[float] = MetricFieldTypeNormal
-    metric_label_inconsistent_classification_and_track: Optional[float] = MetricFieldTypeNormal
+    metric_label_inconsistent_classification_and_track: Optional[
+        float
+    ] = MetricFieldTypeNormal
     metric_label_shape_outlier: Optional[float] = MetricFieldTypeNormal
     metric_label_confidence: float = MetricFieldTypeNormal
 
@@ -554,13 +646,20 @@ class ProjectPredictionAnalyticsFalseNegatives(SQLModel, table=True):
     metric_custom3: Optional[float] = MetricFieldTypeNormal
 
     __table_args__ = (
-        fk_constraint(["prediction_hash"], ProjectPrediction, "active_project_prediction_unmatched_prediction_fk"),
-        Index("active_project_prediction_unmatched_feature_hash_index", "prediction_hash", "feature_hash"),
+        fk_constraint(
+            ["prediction_hash"],
+            ProjectPrediction,
+            "active_project_prediction_unmatched_prediction_fk",
+        ),
+        Index(
+            "active_project_prediction_unmatched_feature_hash_index",
+            "prediction_hash",
+            "feature_hash",
+        ),
     )
 
 
 # FIXME: metrics should be inline predictions or separate (need same keys for easy comparison)??
-
 
 _init_metadata: Set[str] = set()
 

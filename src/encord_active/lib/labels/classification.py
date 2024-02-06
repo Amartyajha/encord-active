@@ -63,13 +63,21 @@ def build_label_classification(classification: Classification) -> LabelClassific
 
 
 def build_classification_answer(
-    label_classification: LabelClassification, option: NestableOption, attribute: RadioAttribute
+    label_classification: LabelClassification,
+    option: NestableOption,
+    attribute: RadioAttribute,
 ):
     return ClassificationAnswer(
         name=label_classification.name,
         value=label_classification.value,
         featureHash=attribute.feature_node_hash,
-        answers=[Answer(name=option.label, value=option.value, featureHash=option.feature_node_hash)],
+        answers=[
+            Answer(
+                name=option.label,
+                value=option.value,
+                featureHash=option.feature_node_hash,
+            )
+        ],
         manualAnnotation=True,
     )
 
@@ -94,12 +102,18 @@ def update_label_row_with_classification(
             raise ValueError("Classification attribute should be radio attribute")
 
         image_class = image_class_map[data_unit["data_link"]]
-        option, *_ = [option for option in attribute.options if option.value == image_class]
+        option, *_ = [
+            option for option in attribute.options if option.value == image_class
+        ]
 
         label_row["classification_answers"] = {
             classification_hash: {
                 "classificationHash": classification_hash,
-                "classifications": [build_classification_answer(label_classification, option, attribute).dict()],
+                "classifications": [
+                    build_classification_answer(
+                        label_classification, option, attribute
+                    ).dict()
+                ],
             }
         }
 
@@ -109,7 +123,9 @@ def update_label_row_with_classification(
 def create_ontology_structure(classnames: Union[Set[str], List[str]]):
     ontology = OntologyStructure()
     classification = ontology.add_classification()
-    attribute = classification.add_attribute(RadioAttribute, "Classification", required=True)
+    attribute = classification.add_attribute(
+        RadioAttribute, "Classification", required=True
+    )
     for name in classnames:
         attribute.add_option(label=name)
 

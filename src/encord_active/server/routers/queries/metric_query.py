@@ -25,12 +25,10 @@ sql_count: Callable[[], int] = sql_count_raw  # type: ignore
 sql_min: Callable[[TType], TType] = sql_min_raw  # type: ignore
 sql_max: Callable[[TType], TType] = sql_max_raw  # type: ignore
 sql_sum: Callable[[TType], TType] = sql_sum_raw  # type: ignore
-
 """
 Severe IQR Scale factor for iqr range
 """
 MODERATE_IQR_SCALE = 1.5
-
 """
 Severe IQR Scale factor for iqr range
 """
@@ -65,7 +63,11 @@ def get_metric_or_enum(
     if metric is not None:
         raw_metric_attr = getattr(table, attr_name)
         if metric.type == MetricType.NORMAL:
-            group_attr = raw_metric_attr if round_digits is None else func.round(raw_metric_attr, round_digits)
+            group_attr = (
+                raw_metric_attr
+                if round_digits is None
+                else func.round(raw_metric_attr, round_digits)
+            )
             return AttrMetadata(
                 group_attr=group_attr,  # type: ignore
                 filter_attr=raw_metric_attr,
@@ -74,7 +76,11 @@ def get_metric_or_enum(
         elif metric.type == MetricType.UFLOAT:
             # FIXME: work for different distributions (currently ONLY aspect ratio)
             #  hence we can assume value is near 1.0 (so we currently use same rounding as normal.
-            group_attr = raw_metric_attr if round_digits is None else func.round(raw_metric_attr, round_digits)
+            group_attr = (
+                raw_metric_attr
+                if round_digits is None
+                else func.round(raw_metric_attr, round_digits)
+            )
             return AttrMetadata(
                 group_attr=group_attr,  # type: ignore
                 filter_attr=raw_metric_attr,
@@ -124,7 +130,9 @@ def query_metric_attr_summary(
     metric = metrics[metric_name]
     metric_attr: Union[int, float] = getattr(table, metric_name)
     metric_count, metric_min, metric_max = sess.exec(
-        select(sql_count(), sql_min(metric_attr), sql_max(metric_attr)).where(*where, is_not(metric_attr, None))
+        select(sql_count(), sql_min(metric_attr), sql_max(metric_attr)).where(
+            *where, is_not(metric_attr, None)
+        )
     ).first() or (0, 0, 0)
     if metric.type == MetricType.RANK:
         return {
@@ -169,12 +177,20 @@ def query_metric_attr_summary(
     )
 
     metric_iqr = metric_q3 - metric_q1
-    moderate_lb, moderate_ub = metric_q1 - MODERATE_IQR_SCALE * metric_iqr, metric_q3 + MODERATE_IQR_SCALE * metric_iqr
-    severe_lb, severe_ub = metric_q1 - SEVERE_IQR_SCALE * metric_iqr, metric_q3 + SEVERE_IQR_SCALE * metric_iqr
+    moderate_lb, moderate_ub = (
+        metric_q1 - MODERATE_IQR_SCALE * metric_iqr,
+        metric_q3 + MODERATE_IQR_SCALE * metric_iqr,
+    )
+    severe_lb, severe_ub = (
+        metric_q1 - SEVERE_IQR_SCALE * metric_iqr,
+        metric_q3 + SEVERE_IQR_SCALE * metric_iqr,
+    )
     if metric_name != "metric_random":
         metric_severe = (
             sess.exec(
-                select(func.count()).where(*where, not_between_op(metric_attr, severe_lb, severe_ub))  # type: ignore
+                select(func.count()).where(
+                    *where, not_between_op(metric_attr, severe_lb, severe_ub)
+                )  # type: ignore
             ).first()
             or 0
         )
@@ -232,7 +248,8 @@ def query_attr_summary(
     return {
         "count": count,
         "metrics": {k: v for k, v in metrics.items() if v is not None},
-        "enums": {k: {} for k, e in domain_tables.enums.items()},  # FIXME: implement properly
+        # FIXME: implement properly
+        "enums": {k: {} for k, e in domain_tables.enums.items()},
     }
 
 
@@ -246,7 +263,11 @@ def query_attr_distribution(
 ) -> dict:
     domain_tables = tables.annotation or tables.data
     attr = get_metric_or_enum(
-        domain_tables.analytics, attr_name, domain_tables.metrics, domain_tables.enums, buckets=buckets
+        domain_tables.analytics,
+        attr_name,
+        domain_tables.metrics,
+        domain_tables.enums,
+        buckets=buckets,
     )
     where = search_query.search_filters(
         tables=tables,
@@ -286,10 +307,18 @@ def query_attr_scatter(
 ) -> dict:
     domain_tables = tables.annotation or tables.data
     x_attr = get_metric_or_enum(
-        domain_tables.analytics, x_metric_name, domain_tables.metrics, domain_tables.enums, buckets=buckets
+        domain_tables.analytics,
+        x_metric_name,
+        domain_tables.metrics,
+        domain_tables.enums,
+        buckets=buckets,
     )
     y_attr = get_metric_or_enum(
-        domain_tables.analytics, y_metric_name, domain_tables.metrics, domain_tables.enums, buckets=buckets
+        domain_tables.analytics,
+        y_metric_name,
+        domain_tables.metrics,
+        domain_tables.enums,
+        buckets=buckets,
     )
     where = search_query.search_filters(
         tables=tables,

@@ -32,7 +32,9 @@ def get(
     """
     _check_property(property)
     value = app_config.contents.get(property)
-    rich.print(f"{property} = {value}" or f"[bold red]Property `{property}` not configured.")
+    rich.print(
+        f"{property} = {value}" or f"[bold red]Property `{property}` not configured."
+    )
 
 
 @config_cli.command()

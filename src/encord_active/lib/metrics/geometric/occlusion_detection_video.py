@@ -27,7 +27,10 @@ class OcclusionDetectionOnVideo(Metric):
             doc_url="https://docs.encord.com/docs/active-label-quality-metrics#detect-occlusion-in-video",
             metric_type=MetricType.GEOMETRIC,
             data_type=DataType.SEQUENCE,
-            annotation_type=[AnnotationType.OBJECT.BOUNDING_BOX, AnnotationType.OBJECT.ROTATABLE_BOUNDING_BOX],
+            annotation_type=[
+                AnnotationType.OBJECT.BOUNDING_BOX,
+                AnnotationType.OBJECT.ROTATABLE_BOUNDING_BOX,
+            ],
         )
         self.low_threshold = low_threshold
         self.medium_threshold = medium_threshold
@@ -46,10 +49,14 @@ class OcclusionDetectionOnVideo(Metric):
             return "There is no occlusion"
 
     def execute(self, iterator: Iterator, writer: CSVMetricWriter):
-        valid_annotation_types = {annotation_type.value for annotation_type in self.metadata.annotation_type}
+        valid_annotation_types = {
+            annotation_type.value for annotation_type in self.metadata.annotation_type
+        }
 
         videos: dict[str, dict[str, dict]] = {}
-        for label_row_hash, label_row in tqdm(iterator.label_rows.items(), desc="Looking for occlusions", leave=False):
+        for label_row_hash, label_row in tqdm(
+            iterator.label_rows.items(), desc="Looking for occlusions", leave=False
+        ):
             if label_row["data_type"] == "video":
                 videos[label_row_hash] = {}
 
@@ -61,18 +68,27 @@ class OcclusionDetectionOnVideo(Metric):
 
                         object_hash = obj["objectHash"]
                         if object_hash not in videos[label_row_hash].keys():
-                            videos[label_row_hash][object_hash] = {"area": [], "aspect_ratio": [], "frame": []}
+                            videos[label_row_hash][object_hash] = {
+                                "area": [],
+                                "aspect_ratio": [],
+                                "frame": [],
+                            }
 
                         h = obj["boundingBox"]["h"]
                         w = obj["boundingBox"]["w"]
                         if h == 0:
                             continue
                         videos[label_row_hash][object_hash]["area"].append(h * w)
-                        videos[label_row_hash][object_hash]["aspect_ratio"].append(w / h)
+                        videos[label_row_hash][object_hash]["aspect_ratio"].append(
+                            w / h
+                        )
                         videos[label_row_hash][object_hash]["frame"].append(label)
 
                 for object_hash in videos[label_row_hash].keys():
-                    if len(videos[label_row_hash][object_hash]["frame"]) >= self.min_samples:
+                    if (
+                        len(videos[label_row_hash][object_hash]["frame"])
+                        >= self.min_samples
+                    ):
                         data_points = np.stack(
                             (
                                 videos[label_row_hash][object_hash]["area"],
@@ -80,27 +96,36 @@ class OcclusionDetectionOnVideo(Metric):
                             ),
                             axis=1,
                         )
-                        data_points_scaled = self.min_max_scaler.fit_transform(data_points)
+                        data_points_scaled = self.min_max_scaler.fit_transform(
+                            data_points
+                        )
 
                         data_points_mean = np.mean(data_points_scaled, axis=0)
-                        distances = np.linalg.norm(data_points_scaled - data_points_mean, axis=1)
+                        distances = np.linalg.norm(
+                            data_points_scaled - data_points_mean, axis=1
+                        )
 
                         # We want both distant and low area samples, so filter according to that
                         occlusions = np.logical_and(
-                            (distances > self.low_threshold), (data_points_scaled[:, 0] < data_points_mean[0])
+                            (distances > self.low_threshold),
+                            (data_points_scaled[:, 0] < data_points_mean[0]),
                         )
 
                         distances_adjusted = np.full(data_points.shape[0], 0.0)
                         distances_adjusted[occlusions] = distances[occlusions]
 
-                        descriptions = list(map(self.get_description_from_occlusion, distances_adjusted))
+                        descriptions = list(
+                            map(self.get_description_from_occlusion, distances_adjusted)
+                        )
 
                         scores = np.full(data_points.shape[0], 100.0)
                         scores_full = 1 / distances
                         scores[occlusions] = scores_full[occlusions]
 
                         videos[label_row_hash][object_hash]["scores"] = scores
-                        videos[label_row_hash][object_hash]["descriptions"] = descriptions
+                        videos[label_row_hash][object_hash][
+                            "descriptions"
+                        ] = descriptions
 
         if not videos:
             logger.info("<yellow>[Skipping]</yellow> No videos in dataset. ")
@@ -119,10 +144,14 @@ class OcclusionDetectionOnVideo(Metric):
                     continue
 
                 # todo check if speedup is needed in case a lot of same type's objects are in a label row
-                score_index = videos[label_row_hash][object_hash]["frame"].index(str(iterator.frame))
+                score_index = videos[label_row_hash][object_hash]["frame"].index(
+                    str(iterator.frame)
+                )
 
                 writer.write(
                     videos[label_row_hash][obj["objectHash"]]["scores"][score_index],
                     obj,
-                    description=videos[iterator.label_hash][obj["objectHash"]]["descriptions"][score_index],
+                    description=videos[iterator.label_hash][obj["objectHash"]][
+                        "descriptions"
+                    ][score_index],
                 )

@@ -24,7 +24,9 @@ def import_coco_predictions(
     predictions_path: Path,
 ):
     project_file_structure = ProjectFileStructure(project_path)
-    image_data_unit = json.loads(project_file_structure.image_data_unit.read_text(encoding="utf-8"))
+    image_data_unit = json.loads(
+        project_file_structure.image_data_unit.read_text(encoding="utf-8")
+    )
     ontology = json.loads(project_file_structure.ontology.read_text(encoding="utf-8"))
     # NOTE: when we import a coco project, we change the category id to support
     # categories with multiple shapes. Here we iterate the ontology objects
@@ -35,7 +37,8 @@ def import_coco_predictions(
     # NOTE: we subtract 1 from the id to match the original id since we don't
     # support 0 index when the project is created
     category_to_hash = {
-        (str(int(obj["id"][:-1]) - 1), obj["shape"]): obj["featureNodeHash"] for obj in ontology["objects"]
+        (str(int(obj["id"][:-1]) - 1), obj["shape"]): obj["featureNodeHash"]
+        for obj in ontology["objects"]
     }
 
     category_types: Dict[int, list] = {}
@@ -89,7 +92,9 @@ def import_coco_predictions(
     return predictions
 
 
-def import_coco_project(images_dir: Path, annotations_file: Path, target: Path, use_symlinks: bool = False) -> Path:
+def import_coco_project(
+    images_dir: Path, annotations_file: Path, target: Path, use_symlinks: bool = False
+) -> Path:
     """
     Importer for COCO datasets.
     Args:

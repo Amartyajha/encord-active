@@ -206,7 +206,7 @@ def filter_workflow_stages(to_filter: pd.DataFrame, stages: List[str], pfs: Proj
     filtered_label_hashes = {
         lr_hash
         for lr_hash, metadata in lr_metadata.items()
-        if metadata.get("workflow_graph_node", dict()).get("title", None) in stages
+        if metadata.get("workflow_graph_node", {}).get("title", None) in stages
     }
     return to_filter[label_hashes.isin(filtered_label_hashes)]
 
